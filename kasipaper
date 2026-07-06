@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KASI Paper — 한국천문연구원 논문 지식 포털</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --space-950:#070B1C; --space-900:#0A102A; --space-800:#111838;
+    --space-700:#1A2348; --line:#26305C;
+    --ink:#EAF0FF; --muted:#93A0C9; --dim:#5E6A96;
+    --blue:#5B8DEF; --blue-deep:#2E5BBF; --gold:#F0B64B;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Noto Sans KR',sans-serif; background:var(--space-950); color:var(--ink);
+    line-height:1.65; letter-spacing:-0.01em;
+  }
+  .latin{font-family:'Space Grotesk','Noto Sans KR',sans-serif}
+
+  /* ---------- 상단 프로토타입 배너 ---------- */
+  .proto-banner{
+    background:linear-gradient(90deg,var(--blue-deep),#7A4FBF);
+    text-align:center; font-size:12.5px; padding:6px 16px; color:#fff; letter-spacing:.02em;
+  }
+  .proto-banner b{color:var(--gold)}
+
+  /* ---------- 내비게이션 ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(7,11,28,.82); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:13px 24px}
+  .kasi-ci{display:flex;align-items:center}
+  .kasi-ci img{height:24px;display:block;opacity:.95}
+  .brand-divider{width:1px;height:26px;background:var(--line)}
+  .logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .logo svg{display:block}
+  .logo .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:19px;letter-spacing:.04em}
+  .wordmark .grad{
+    background:linear-gradient(92deg,#7FA8FF,#4C8DFF 60%,#F0B64B 130%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .logo .sub{font-size:9.5px;color:var(--muted);letter-spacing:.24em;margin-top:-3px}
+  nav.menu{display:flex;gap:4px;margin-left:auto}
+  nav.menu button{
+    background:none;border:none;color:var(--muted);font-family:inherit;font-size:13.5px;letter-spacing:.06em;
+    padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s;font-weight:500;
+  }
+  nav.menu button:hover{color:var(--ink);background:var(--space-800)}
+  nav.menu button.active{color:var(--ink);background:var(--space-700)}
+  .login-chip{
+    font-size:12.5px;color:var(--gold);border:1px solid rgba(240,182,75,.35);
+    padding:5px 12px;border-radius:99px;white-space:nowrap;
+  }
+
+  /* ---------- 공통 레이아웃 ---------- */
+  .page{display:none;max-width:1120px;margin:0 auto;padding:0 24px 96px}
+  .page.on{display:block;animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .eyebrow{font-size:12px;letter-spacing:.22em;color:var(--blue);font-weight:700;margin-bottom:10px}
+  h2.section{font-size:26px;font-weight:700;margin-bottom:6px}
+  .section-desc{color:var(--muted);font-size:14.5px;margin-bottom:28px}
+
+  /* ---------- 히어로 + 별 필드 ---------- */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  #stars{position:absolute;inset:0;width:100%;height:100%}
+  .hero-inner{position:relative;max-width:1120px;margin:0 auto;padding:96px 24px 210px;text-align:center;z-index:2}
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:8px;font-family:'Space Grotesk';
+    font-size:11px;letter-spacing:.32em;color:var(--muted);margin-bottom:34px;
+  }
+  .hero-eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);
+    box-shadow:0 0 12px 3px rgba(240,182,75,.55)}
+  .mega{font-family:'Space Grotesk';font-weight:700;line-height:.92;letter-spacing:.02em;user-select:none}
+  .mega .solid{display:block;font-size:clamp(64px,12.5vw,148px);color:var(--ink)}
+  .mega .outline-wrap{position:relative;display:inline-block}
+  .mega .outline{display:block;font-size:clamp(64px,12.5vw,148px);color:var(--blue)}
+  @supports ((-webkit-text-stroke:2px #000) or (text-stroke:2px #000)){
+    .mega .outline{color:transparent;-webkit-text-stroke:2px var(--blue);text-stroke:2px var(--blue)}
+  }
+  .mega .orbit-ring{position:absolute;inset:-26% -9%;width:118%;height:152%;pointer-events:none}
+  .serif-line{
+    font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(22px,3.4vw,34px);
+    color:var(--gold);margin:22px 0 18px;letter-spacing:.01em;
+  }
+  .hero p.lead{color:var(--muted);font-size:15.5px;margin:0 auto 40px;max-width:520px}
+  /* 행성 지평선 */
+  .planet{
+    position:absolute;left:50%;top:76%;transform:translateX(-50%);
+    width:170%;max-width:2300px;aspect-ratio:1;border-radius:50%;z-index:1;pointer-events:none;
+    background:radial-gradient(circle at 50% 12%, #33508f 0%, #16204a 26%, #0a102a 48%, #05070f 68%);
+    box-shadow:0 -6px 90px 8px rgba(122,166,255,.5), inset 0 46px 140px rgba(150,190,255,.28);
+  }
+  @keyframes orbit{from{stroke-dashoffset:0}to{stroke-dashoffset:-180}}
+  .orbit-spin{stroke-dasharray:7 6;animation:orbit 10s linear infinite}
+  @media (prefers-reduced-motion: reduce){.orbit-spin{animation:none}}
+  .planet::before{
+    content:"";position:absolute;inset:-2px;border-radius:50%;
+    background:radial-gradient(circle at 50% 6%, rgba(190,215,255,.9), rgba(120,170,255,.15) 9%, transparent 16%);
+    filter:blur(6px);
+  }
+  .hero p.lead{color:var(--muted);font-size:16px;margin:16px auto 36px;max-width:560px}
+  .searchbox{
+    display:flex;max-width:620px;margin:0 auto;background:rgba(255,255,255,.05);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:6px 6px 6px 24px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+  }
+  .searchbox input{
+    flex:1;background:none;border:none;outline:none;color:var(--ink);
+    font-family:inherit;font-size:15px;
+  }
+  .searchbox input::placeholder{color:var(--dim)}
+  .searchbox button{
+    background:linear-gradient(92deg,#4C8DFF,#8A5CF6);border:none;color:#fff;
+    font-family:inherit;font-weight:700;font-size:14px;padding:11px 26px;
+    border-radius:99px;cursor:pointer;transition:.18s;
+  }
+  .searchbox button:hover{filter:brightness(1.15);box-shadow:0 6px 22px rgba(110,110,255,.45)}
+  .hero-hints{margin-top:16px;font-size:13px;color:var(--dim)}
+  .hero-hints a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--dim);cursor:pointer;margin:0 6px}
+  .hero-hints a:hover{color:var(--blue)}
+
+  /* ---------- 통계(별자리 카드) ---------- */
+  .constellation{
+    max-width:1120px;margin:0 auto;padding:26px 24px;position:relative;z-index:2;
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-bottom:1px solid var(--line);
+  }
+  .stat{padding:4px 26px;border-left:1px solid var(--line)}
+  .stat:first-child{border-left:none;padding-left:0}
+  .stat .num{font-family:'Space Grotesk';font-size:34px;font-weight:700;color:var(--ink);letter-spacing:.01em}
+  .stat .num em{font-style:normal;font-size:15px;color:var(--blue);margin-left:3px}
+  .stat .lbl{font-size:11.5px;color:var(--dim);margin-top:4px;letter-spacing:.06em}
+
+  /* ---------- 메인: 최근 논문 ---------- */
+  .home-section{margin-top:72px}
+  .paper-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .pcard{
+    background:rgba(255,255,255,.035);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.09);border-radius:var(--radius);
+    padding:24px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;gap:10px;
+  }
+  .pcard:hover{border-color:rgba(124,164,255,.6);background:rgba(255,255,255,.055);transform:translateY(-4px)}
+  .pcard .yr{font-family:'Space Grotesk';font-size:12px;color:var(--gold);letter-spacing:.1em}
+  .pcard h3{font-size:15.5px;font-weight:700;line-height:1.5}
+  .pcard .field{margin-top:auto;font-size:12px;color:var(--muted)}
+  .pcard .field b{color:var(--blue);font-weight:500}
+
+  /* ---------- 아카이브 ---------- */
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+  .filters select,.filters input{
+    background:var(--space-800);border:1px solid var(--line);color:var(--ink);
+    font-family:inherit;font-size:14px;padding:9px 14px;border-radius:9px;outline:none;
+  }
+  .filters input{flex:1;min-width:220px}
+  .filters select:focus,.filters input:focus{border-color:var(--blue)}
+  .plist .row{
+    display:flex;gap:18px;align-items:baseline;padding:17px 6px;border-bottom:1px solid var(--line);
+    cursor:pointer;transition:.12s;
+  }
+  .plist .row:hover{background:rgba(91,141,239,.05)}
+  .plist .yr{font-family:'Space Grotesk';color:var(--gold);font-size:13.5px;min-width:46px}
+  .plist .ttl{flex:1;font-size:15px;font-weight:500}
+  .plist .tag{font-size:12px;color:var(--muted);background:var(--space-800);border:1px solid var(--line);padding:3px 10px;border-radius:99px;white-space:nowrap}
+  .plist .dl{font-size:12.5px;color:var(--blue);white-space:nowrap}
+  .count-line{font-size:13px;color:var(--dim);margin-bottom:6px}
+
+  /* ---------- 질의응답 ---------- */
+  .qa-wrap{display:grid;grid-template-columns:1fr 300px;gap:24px}
+  .chat{
+    background:var(--space-900);border:1px solid var(--line);border-radius:var(--radius);
+    display:flex;flex-direction:column;height:600px;overflow:hidden;
+  }
+  .chat-log{flex:1;overflow-y:auto;padding:26px;display:flex;flex-direction:column;gap:18px}
+  .msg{max-width:82%;padding:13px 17px;border-radius:14px;font-size:14.5px;white-space:pre-wrap}
+  .msg.user{align-self:flex-end;background:var(--blue-deep);border-bottom-right-radius:4px}
+  .msg.ai{align-self:flex-start;background:var(--space-800);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg.ai .src{
+    margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--muted);
+  }
+  .msg.ai .src b{color:var(--gold);font-weight:500}
+  .typing{align-self:flex-start;color:var(--dim);font-size:13px;padding:4px 8px}
+  .chat-input{display:flex;gap:10px;padding:14px;border-top:1px solid var(--line);background:var(--space-800)}
+  .chat-input input{
+    flex:1;background:var(--space-900);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:inherit;font-size:14.5px;padding:12px 16px;outline:none;
+  }
+  .chat-input input:focus{border-color:var(--blue)}
+  .chat-input button{
+    background:linear-gradient(92deg,#4C8DFF,#8A5CF6);border:none;color:#fff;
+    font-family:inherit;font-weight:700;padding:0 22px;border-radius:10px;
+    cursor:pointer;font-size:14px;transition:.18s;
+  }
+  .chat-input button:hover{filter:brightness(1.15)}
+  .qa-side .box{
+    background:var(--space-800);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;margin-bottom:16px;
+  }
+  .qa-side h4{font-size:13px;letter-spacing:.1em;color:var(--blue);margin-bottom:12px}
+  .qa-side .exq{
+    display:block;width:100%;text-align:left;background:var(--space-900);border:1px solid var(--line);
+    color:var(--muted);font-family:inherit;font-size:13px;padding:10px 13px;border-radius:9px;
+    cursor:pointer;margin-bottom:8px;transition:.12s;line-height:1.5;
+  }
+  .qa-side .exq:hover{color:var(--ink);border-color:var(--blue)}
+  .qa-side p{font-size:12.5px;color:var(--dim);line-height:1.7}
+
+  /* ---------- 트렌드 ---------- */
+  .trend-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+  .tbox{background:var(--space-800);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .tbox h3{font-size:16px;margin-bottom:4px}
+  .tbox .sub{font-size:12.5px;color:var(--dim);margin-bottom:22px}
+  .bar-row{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+  .bar-row .k{width:150px;font-size:13.5px;color:var(--muted);text-align:right}
+  .bar-row .track{flex:1;background:var(--space-900);border-radius:99px;height:22px;overflow:hidden}
+  .bar-row .fill{
+    height:100%;border-radius:99px;display:flex;align-items:center;justify-content:flex-end;
+    padding-right:9px;font-family:'Space Grotesk';font-size:11.5px;color:#fff;
+    background:linear-gradient(90deg,var(--blue-deep),var(--blue));
+    width:0;transition:width 1s cubic-bezier(.2,.7,.2,1);
+  }
+  .bar-row.gold .fill{background:linear-gradient(90deg,#a97c22,var(--gold));color:#221a05}
+  .gap-list li{
+    list-style:none;padding:13px 0;border-bottom:1px solid var(--line);
+    font-size:14px;display:flex;gap:12px;align-items:baseline;
+  }
+  .gap-list li:last-child{border:none}
+  .gap-list .n{font-family:'Space Grotesk';color:var(--gold);font-size:13px}
+  .gap-list p{font-size:12.5px;color:var(--dim);margin-top:2px}
+
+  /* ---------- 푸터 ---------- */
+  footer{border-top:1px solid var(--line);margin-top:40px}
+  .foot{max-width:1120px;margin:0 auto;padding:30px 24px;display:flex;justify-content:space-between;
+    font-size:12.5px;color:var(--dim);flex-wrap:wrap;gap:10px}
+
+  @media (max-width:900px){
+    .kasi-ci,.brand-divider,.logo .sub{display:none}
+    .constellation{grid-template-columns:repeat(2,1fr);row-gap:20px}
+    .stat{padding:0 18px}
+    .stat:nth-child(odd){border-left:none;padding-left:0}
+    .hero-inner{padding:64px 20px 150px}
+    .paper-grid{grid-template-columns:1fr}
+    .qa-wrap,.trend-grid{grid-template-columns:1fr}
+    nav.menu{gap:0}
+    nav.menu button{padding:8px 9px;font-size:13px}
+    .login-chip{display:none}
+    .chat{height:520px}
+  }
+</style>
+</head>
+<body>
+
+<div class="proto-banner">🛰 <b>PROTOTYPE</b> — 본 화면은 보고용 시연 프로토타입이며, 표시된 논문·수치는 예시 데이터입니다.</div>
+
+<header>
+  <div class="nav">
+    <a class="kasi-ci" href="https://www.kasi.re.kr" target="_blank" title="한국천문연구원">
+      <img src="https://www.kasi.re.kr/resources/images/kasi_logo_w.png" alt="한국천문연구원"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'한국천문연구원',style:'color:#EAF0FF;font-weight:700;font-size:14px'}))">
+    </a>
+    <span class="brand-divider"></span>
+    <div class="logo" onclick="go('home')">
+      <svg width="36" height="36" viewBox="0 0 44 44" fill="none" aria-label="KASI Paper 심볼">
+        <defs>
+          <linearGradient id="lgB" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7FA8FF"/><stop offset="1" stop-color="#2E5BBF"/>
+          </linearGradient>
+        </defs>
+        <rect x="12" y="8" width="20" height="27" rx="3" fill="url(#lgB)"/>
+        <line x1="16" y1="15" x2="28" y2="15" stroke="#EAF0FF" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="16" y1="20" x2="28" y2="20" stroke="#EAF0FF" stroke-width="1.8" stroke-linecap="round" opacity=".75"/>
+        <line x1="16" y1="25" x2="24" y2="25" stroke="#EAF0FF" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>
+        <ellipse cx="22" cy="22" rx="19" ry="7.5" stroke="#93A0C9" stroke-width="1.6" fill="none" transform="rotate(-22 22 22)"/>
+        <circle cx="38.2" cy="13.2" r="2.6" fill="#F0B64B"/>
+      </svg>
+      <div>
+        <div class="wordmark latin">KASI<span class="grad"> PAPER</span></div>
+        <div class="sub">RESEARCH PAPER PORTAL</div>
+      </div>
+    </div>
+    <nav class="menu">
+      <button id="nav-home" class="active" onclick="go('home')">홈</button>
+      <button id="nav-archive" onclick="go('archive')">논문 아카이브</button>
+      <button id="nav-qa" onclick="go('qa')">AI 질의응답</button>
+      <button id="nav-trend" onclick="go('trend')">연구 트렌드</button>
+    </nav>
+    <div class="login-chip">원내 직원 로그인 (예정)</div>
+  </div>
+</header>
+
+<!-- ================= 홈 ================= -->
+<div class="hero" id="hero">
+  <canvas id="stars"></canvas>
+  <div class="planet"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">KOREA ASTRONOMY &amp; SPACE SCIENCE INSTITUTE</div>
+    <div class="mega" role="heading" aria-level="1" aria-label="KASI PAPER">
+      <span class="solid">KASI</span>
+      <span class="outline-wrap">
+        <span class="outline">PAPER</span>
+        <svg class="orbit-ring" viewBox="0 0 400 160" fill="none" preserveAspectRatio="none">
+          <ellipse class="orbit-spin" cx="200" cy="80" rx="192" ry="56" stroke="#93A0C9"
+                   stroke-width="1.6" transform="rotate(-8 200 80)"/>
+          <circle cx="356" cy="34" r="5" fill="#F0B64B"/>
+        </svg>
+      </span>
+    </div>
+    <div class="serif-line">우주를 향한 50년의 기록.</div>
+    <p class="lead">한국천문연구원이 생산한 논문 800여 편의 원문을 검색하고,<br>AI에게 질문하고, 다음 연구 주제의 실마리를 찾아보세요.</p>
+    <div class="searchbox">
+      <input id="heroSearch" type="text" placeholder="예: 외계행성 탐색에 KMTNet을 활용한 논문">
+      <button onclick="heroGo()">검색</button>
+    </div>
+    <div class="hero-hints">추천 검색:
+      <a onclick="preset('외계행성')">외계행성</a>·
+      <a onclick="preset('우주위험감시')">우주위험감시</a>·
+      <a onclick="preset('태양활동')">태양활동</a>·
+      <a onclick="preset('KVN')">KVN</a>
+    </div>
+  </div>
+</div>
+
+<div class="constellation" id="statRow">
+  <div class="stat"><div class="num latin">812<em>편</em></div><div class="lbl">수록 논문 (원문 전체 검색)</div></div>
+  <div class="stat"><div class="num latin">2024–2026</div><div class="lbl">발간 연도 범위</div></div>
+  <div class="stat"><div class="num latin">6<em>개</em></div><div class="lbl">연구 분야 분류</div></div>
+  <div class="stat"><div class="num latin">24<em>시간</em></div><div class="lbl">AI 질의응답 이용 가능</div></div>
+</div>
+
+<main>
+<section class="page on" id="page-home">
+  <div class="home-section">
+    <div class="eyebrow">RECENT PAPERS</div>
+    <h2 class="section">최근 등록 논문</h2>
+    <p class="section-desc">가장 최근에 등록된 연구 성과입니다. 카드를 누르면 원문과 AI 요약을 볼 수 있습니다. (프로토타입에서는 예시)</p>
+    <div class="paper-grid" id="recentGrid"></div>
+  </div>
+
+  <div class="home-section">
+    <div class="eyebrow">HOW IT WORKS</div>
+    <h2 class="section">이 포털이 하는 일</h2>
+    <div class="paper-grid">
+      <div class="pcard"><div class="yr">01 · SEARCH</div><h3>원문 전체 검색</h3><div class="field">제목·키워드만이 아니라 <b>논문 본문 내용</b>까지 의미 기반으로 검색합니다.</div></div>
+      <div class="pcard"><div class="yr">02 · ASK</div><h3>AI 질의응답</h3><div class="field">질문하면 관련 논문을 찾아 <b>근거 논문(연도·제목)을 명시</b>하며 답변합니다.</div></div>
+      <div class="pcard"><div class="yr">03 · DISCOVER</div><h3>주제 발굴 지원</h3><div class="field">연도별 키워드 트렌드와 연구 공백을 분석해 <b>새 논문 주제의 실마리</b>를 제공합니다.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 아카이브 ================= -->
+<section class="page" id="page-archive">
+  <div style="height:48px"></div>
+  <div class="eyebrow">ARCHIVE</div>
+  <h2 class="section">논문 아카이브</h2>
+  <p class="section-desc">연도·분야·키워드로 812편의 논문을 찾아보세요. (아래 목록은 화면 구성용 예시 데이터입니다)</p>
+  <div class="filters">
+    <input id="fKey" type="text" placeholder="키워드 검색 (제목·본문)" oninput="renderList()">
+    <select id="fYear" onchange="renderList()">
+      <option value="">전체 연도</option>
+      <option>2026</option><option>2025</option><option>2024</option>
+    </select>
+    <select id="fField" onchange="renderList()">
+      <option value="">전체 분야</option>
+      <option>광학천문</option><option>전파천문</option><option>우주과학</option><option>우주위험감시</option><option>이론천문</option><option>천문우주기술</option>
+    </select>
+  </div>
+  <div class="count-line" id="countLine"></div>
+  <div class="plist" id="plist"></div>
+</section>
+
+<!-- ================= 질의응답 ================= -->
+<section class="page" id="page-qa">
+  <div style="height:48px"></div>
+  <div class="eyebrow">ASK KASI PAPER</div>
+  <h2 class="section">AI 질의응답</h2>
+  <p class="section-desc">보유 논문 812편을 근거로 AI가 답변합니다. 답변에는 항상 근거 논문이 함께 표시됩니다.</p>
+  <div class="qa-wrap">
+    <div class="chat">
+      <div class="chat-log" id="chatLog">
+        <div class="msg ai">안녕하세요! 한국천문연구원 논문 812편을 학습 범위로 하는 연구 지원 AI입니다. 논문 내용, 방법론, 연구 동향 등 무엇이든 물어보세요. 🌌</div>
+      </div>
+      <div class="chat-input">
+        <input id="qInput" type="text" placeholder="질문을 입력하세요..." onkeydown="if(event.key==='Enter')sendQ()">
+        <button onclick="sendQ()">전송</button>
+      </div>
+    </div>
+    <div class="qa-side">
+      <div class="box">
+        <h4>이런 질문을 해보세요</h4>
+        <button class="exq" onclick="askPreset(0)">KMTNet으로 외계행성을 발견한 우리 원 논문들의 핵심 성과를 정리해줘</button>
+        <button class="exq" onclick="askPreset(1)">우주쓰레기 추적 관련 논문에서 사용된 관측 장비는?</button>
+        <button class="exq" onclick="askPreset(2)">2024년 이후 논문에서 자주 등장하는 방법론 변화가 있어?</button>
+      </div>
+      <div class="box">
+        <h4>답변 원칙</h4>
+        <p>· 보유 논문에 근거해서만 답변합니다<br>· 근거 논문을 (연도, 제목)으로 명시합니다<br>· 논문에 없는 내용은 없다고 답합니다</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 트렌드 ================= -->
+<section class="page" id="page-trend">
+  <div style="height:48px"></div>
+  <div class="eyebrow">RESEARCH TRENDS</div>
+  <h2 class="section">연구 트렌드 &amp; 주제 발굴</h2>
+  <p class="section-desc">논문 812편의 본문을 분석해 키워드 흐름과 연구 공백을 보여줍니다. (예시 수치)</p>
+  <div class="trend-grid">
+    <div class="tbox">
+      <h3>키워드 출현 빈도 변화</h3>
+      <div class="sub">2024년(파랑) 대비 2025–2026년(금색) 논문 내 등장 비율</div>
+      <div id="bars"></div>
+    </div>
+    <div class="tbox">
+      <h3>연구 공백 후보 주제</h3>
+      <div class="sub">인접 분야 대비 우리 원 논문 수가 적은 주제 — 신규 논문 주제 후보</div>
+      <ul class="gap-list">
+        <li><span class="n">01</span><div>AI 기반 관측 데이터 자동 분류<p>관측 논문은 많으나 기계학습 적용 논문은 4편에 그침</p></div></li>
+        <li><span class="n">02</span><div>우주쓰레기 능동 제거 기술<p>추적·감시 논문 대비 대응 기술 논문 부재</p></div></li>
+        <li><span class="n">03</span><div>달 남극 자원 탐사 연계 연구<p>국제 동향 대비 원내 축적 논문 2편</p></div></li>
+        <li><span class="n">04</span><div>시민과학 기반 관측 데이터 활용<p>보유 논문에서 미개척 영역</p></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="foot">
+    <div>© Korea Astronomy &amp; Space Science Institute · KASI Paper (Prototype)</div>
+    <div>대전광역시 유성구 대덕대로 776 · 본 화면의 데이터는 시연용 예시입니다</div>
+  </div>
+</footer>
+
+<script>
+/* ---------------- 별 필드 애니메이션 ---------------- */
+const cv=document.getElementById('stars'),cx=cv.getContext('2d');let stars=[];
+function sizeCv(){cv.width=cv.offsetWidth;cv.height=cv.offsetHeight;
+  stars=Array.from({length:Math.floor(cv.width/7)},()=>({
+    x:Math.random()*cv.width,y:Math.random()*cv.height,
+    r:Math.random()*1.4+.3,tw:Math.random()*Math.PI*2,sp:.004+Math.random()*.01
+  }));}
+sizeCv();window.addEventListener('resize',sizeCv);
+(function draw(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  const g=cx.createRadialGradient(cv.width/2,cv.height*1.15,80,cv.width/2,cv.height*1.15,cv.width*.75);
+  g.addColorStop(0,'rgba(46,91,191,.22)');g.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=g;cx.fillRect(0,0,cv.width,cv.height);
+  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(const s of stars){
+    if(!rm)s.tw+=s.sp;
+    const a=.35+Math.abs(Math.sin(s.tw))*.6;
+    cx.beginPath();cx.arc(s.x,s.y,s.r,0,7);cx.fillStyle=`rgba(234,240,255,${a})`;cx.fill();
+  }
+  requestAnimationFrame(draw);
+})();
+
+/* ---------------- 페이지 전환 ---------------- */
+function go(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.querySelectorAll('nav.menu button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav-'+p).classList.add('active');
+  const showHero=(p==='home');
+  document.getElementById('hero').style.display=showHero?'block':'none';
+  document.getElementById('statRow').style.display=showHero?'grid':'none';
+  window.scrollTo({top:0});
+  if(p==='trend')animateBars();
+}
+
+/* ---------------- 예시 논문 데이터 ---------------- */
+const FIELDS=['광학천문','전파천문','우주과학','우주위험감시','이론천문','천문우주기술'];
+const PAPERS=[
+ [2026,'KMTNet 관측 자료를 활용한 저질량 외계행성 후보 검출 기법 개선','광학천문'],
+ [2026,'심우주 항행을 위한 우주측지 기준계 정밀화 연구','우주과학'],
+ [2026,'OWL-Net 광학 관측 기반 저궤도 우주물체 궤도 결정 정확도 분석','우주위험감시'],
+ [2026,'KVN 128GHz 대역 동시관측을 통한 활동성 은하핵 제트 구조 연구','전파천문'],
+ [2026,'태양 코로나 질량 방출의 지구 도달 시간 예측 모델 비교','우주과학'],
+ [2025,'GMT 시대를 대비한 고분산 분광기 요구사양 도출 연구','천문우주기술'],
+ [2025,'도심항공교통(UAM) 시대의 우주전파환경 영향 분석','우주과학'],
+ [2025,'초장기선 간섭계를 이용한 은하 중심 블랙홀 질량 측정','전파천문'],
+ [2025,'인공위성 레이저 추적(SLR) 자료 기반 지구자전 변동 연구','우주과학'],
+ [2025,'중력마이크로렌즈 사건 자동 검출을 위한 통계적 접근','이론천문'],
+ [2025,'정지궤도 위성 근접 물체 조기경보 알고리즘 개발','우주위험감시'],
+ [2024,'보현산 1.8m 망원경 분광 자료를 활용한 항성 대기 분석','광학천문'],
+ [2024,'태양 흑점 활동 주기와 우주날씨 예보 정확도의 상관성','우주과학'],
+ [2024,'소행성 지구 근접 통과 사건의 통계적 위험도 평가','우주위험감시'],
+ [2024,'VLBI 시각비교를 통한 국가표준시 정밀도 향상 연구','천문우주기술'],
+ [2024,'외계행성 대기 투과 분광 관측 전략 수립 연구','광학천문'],
+];
+const recent=PAPERS.slice(0,6);
+document.getElementById('recentGrid').innerHTML=recent.map(p=>`
+  <div class="pcard" onclick="go('archive')">
+    <div class="yr">${p[0]}</div><h3>${p[1]}</h3>
+    <div class="field">분야 · <b>${p[2]}</b></div>
+  </div>`).join('');
+
+/* ---------------- 아카이브 렌더링 ---------------- */
+function renderList(){
+  const k=document.getElementById('fKey').value.trim();
+  const y=document.getElementById('fYear').value;
+  const f=document.getElementById('fField').value;
+  const rows=PAPERS.filter(p=>
+    (!k||p[1].includes(k))&&(!y||String(p[0])===y)&&(!f||p[2]===f));
+  document.getElementById('countLine').textContent=
+    `검색 결과 ${rows.length}편 (전체 812편 중 예시 ${PAPERS.length}편 표시)`;
+  document.getElementById('plist').innerHTML=rows.map(p=>`
+    <div class="row">
+      <span class="yr latin">${p[0]}</span>
+      <span class="ttl">${p[1]}</span>
+      <span class="tag">${p[2]}</span>
+      <span class="dl">원문 PDF ↓</span>
+    </div>`).join('')||'<div style="color:var(--dim);padding:30px 6px">조건에 맞는 논문이 없습니다.</div>';
+}
+function preset(k){go('archive');document.getElementById('fKey').value=k;renderList();}
+function heroGo(){preset(document.getElementById('heroSearch').value.trim());}
+renderList();
+
+/* ---------------- 질의응답 (데모 시나리오) ---------------- */
+const DEMO=[
+ {q:'KMTNet으로 외계행성을 발견한 우리 원 논문들의 핵심 성과를 정리해줘',
+  a:'보유 논문 기준으로 KMTNet 관련 성과는 크게 세 갈래로 정리됩니다.\n\n1) 검출 기법 고도화 — 저질량 행성 후보의 검출 한계를 낮추는 알고리즘 개선이 지속적으로 이루어졌습니다.\n2) 중력마이크로렌즈 사건의 자동 검출 — 통계적 접근으로 수작업 검토 부담을 크게 줄였습니다.\n3) 관측 전략 연구 — 남반구 3개소 연속 관측망의 장점을 살린 시계열 확보 전략이 정립되었습니다.',
+  s:['(2026) KMTNet 관측 자료를 활용한 저질량 외계행성 후보 검출 기법 개선','(2025) 중력마이크로렌즈 사건 자동 검출을 위한 통계적 접근','(2024) 외계행성 대기 투과 분광 관측 전략 수립 연구']},
+ {q:'우주쓰레기 추적 관련 논문에서 사용된 관측 장비는?',
+  a:'보유 논문에서 우주물체 추적에 사용된 장비는 다음과 같이 확인됩니다.\n\n· OWL-Net (광학 광역 감시망) — 저궤도 물체의 궤도 결정에 활용, 궤도 결정 정확도 분석 논문에서 성능이 정량 평가되었습니다.\n· 레이저 추적(SLR) 장비 — 정밀 궤도 및 지구자전 변동 연구에 병행 활용되었습니다.\n\n능동 제거(청소) 기술에 대한 원내 논문은 확인되지 않습니다 — 연구 공백 후보입니다.',
+  s:['(2026) OWL-Net 광학 관측 기반 저궤도 우주물체 궤도 결정 정확도 분석','(2025) 인공위성 레이저 추적(SLR) 자료 기반 지구자전 변동 연구']},
+ {q:'2024년 이후 논문에서 자주 등장하는 방법론 변화가 있어?',
+  a:'2025년 이후 논문에서 두 가지 뚜렷한 변화가 관찰됩니다.\n\n1) 통계·자동화 기법의 확산 — 사건 검출과 조기경보에 자동화 알고리즘을 적용하는 논문 비중이 증가했습니다.\n2) 다파장·동시관측 설계 — KVN 다주파수 동시관측처럼 복수 장비·대역을 결합하는 설계가 표준화되는 흐름입니다.\n\n반면 기계학습을 본격 적용한 논문은 아직 소수로, 트렌드 대비 공백 영역입니다.',
+  s:['(2025) 정지궤도 위성 근접 물체 조기경보 알고리즘 개발','(2026) KVN 128GHz 대역 동시관측을 통한 활동성 은하핵 제트 구조 연구']},
+];
+function bubble(t,cls){const d=document.createElement('div');d.className='msg '+cls;d.textContent=t;
+  document.getElementById('chatLog').appendChild(d);scrollLog();return d;}
+function scrollLog(){const l=document.getElementById('chatLog');l.scrollTop=l.scrollHeight;}
+function answer(item){
+  const t=document.createElement('div');t.className='typing';t.textContent='논문 812편에서 근거를 검색하는 중...';
+  document.getElementById('chatLog').appendChild(t);scrollLog();
+  setTimeout(()=>{
+    t.textContent='근거 5조각 발견 · 답변 작성 중...';
+    setTimeout(()=>{
+      t.remove();
+      const d=bubble(item.a,'ai');
+      const s=document.createElement('div');s.className='src';
+      s.innerHTML='<b>근거 논문</b><br>'+item.s.map(x=>'· '+x).join('<br>');
+      d.appendChild(s);scrollLog();
+    },1100);
+  },900);
+}
+function sendQ(){
+  const inp=document.getElementById('qInput');const q=inp.value.trim();if(!q)return;
+  inp.value='';bubble(q,'user');
+  const hit=DEMO.find(d=>q.includes(d.q.slice(0,6)))||
+    {a:'(프로토타입 안내) 실제 서비스에서는 이 질문으로 812편 전체를 검색해 근거와 함께 답변합니다.\n지금은 시연용이라 오른쪽의 예시 질문 3가지에 대해 실제 답변 흐름을 보실 수 있습니다.',s:['— 시연 모드 —']};
+  answer(hit);
+}
+function askPreset(i){bubble(DEMO[i].q,'user');answer(DEMO[i]);}
+
+/* ---------------- 트렌드 막대 ---------------- */
+const BARS=[
+ ['우주위험·우주물체',34,62,1],['외계행성',48,55,1],['우주날씨 예보',22,41,1],
+ ['기계학습·AI',3,12,1],['전파간섭계(VLBI)',40,38,0],['위성항법·측지',28,26,0]
+];
+let barsDone=false;
+function animateBars(){
+  const box=document.getElementById('bars');
+  if(!barsDone){
+    box.innerHTML=BARS.map(b=>`
+      <div class="bar-row"><div class="k">${b[0]}</div>
+        <div class="track"><div class="fill" data-w="${b[1]}">${b[1]}</div></div></div>
+      <div class="bar-row gold"><div class="k"></div>
+        <div class="track"><div class="fill" data-w="${b[2]}">${b[2]}</div></div></div>`).join('');
+    barsDone=true;
+  }
+  setTimeout(()=>{document.querySelectorAll('#bars .fill').forEach(f=>{f.style.width=f.dataset.w+'%';});},80);
+}
+</script>
+</body>
+</html>
