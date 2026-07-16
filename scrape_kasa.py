@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""우주항공청 사업공고 수집 스크립트 v3 (GitHub Actions에서 자동 실행)
-   - 직접 접속이 차단될 경우(해외 IP 차단) 중계 서비스를 경유해 수집
+"""우주항공청 사업공고 수집 스크립트 v4 (GitHub Actions에서 자동 실행)
+   - 직접 접속 차단 시 중계 서비스 경유
+   - 태그 구조와 무관한 '행 단위' 파서 (날짜 + 작성자 표식으로 행을 찾고 제목 추출)
 """
 import json, re, sys, time
+import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 
@@ -18,33 +20,15 @@ HEADERS = {
     "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
 }
 
-# 접속 경로: ① 직접 → ② 중계 서비스들 (해외 IP 차단 우회)
-import urllib.parse
 q = urllib.parse.quote(TARGET, safe="")
 ROUTES = [
     ("직접 접속", TARGET, 12),
-    ("중계: allorigins", f"https://api.allorigins.win/raw?url={q}", 30),
-    ("중계: codetabs",   f"https://api.codetabs.com/v1/proxy?quest={q}", 30),
-    ("중계: corsproxy",  f"https://corsproxy.io/?url={q}", 30),
+    ("중계: allorigins", f"https://api.allorigins.win/raw?url={q}", 40),
+    ("중계: codetabs",   f"https://api.codetabs.com/v1/proxy?quest={q}", 40),
+    ("중계: corsproxy",  f"https://corsproxy.io/?url={q}", 40),
 ]
 
-def norm_href(href: str) -> str:
-    if not href or href == "#" or href.lower().startswith("javascript"):
-        return TARGET
-    if href.startswith("http"):
-        return href
-    return BASE + (href if href.startswith("/") else "/" + href)
-
-def find_date(el) -> str:
-    node = el
-    for _ in range(4):
-        if node is None:
-            break
-        m = DATE_RE.search(node.get_text(" ", strip=True))
-        if m:
-            return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-        node = node.parent
-    return ""
+META_WORDS = ("작성자", "조회수", "첨부파일", "공지", "새글", "번호", "제목", "등록일")
 
 def get_page():
     for name, url, tmo in ROUTES:
@@ -56,52 +40,101 @@ def get_page():
             if ok:
                 return res.text
         except Exception as e:
-            print(f"[진단] {name} 실패: {type(e).__name__}: {e}")
+            print(f"[진단] {name} 실패: {type(e).__name__}")
         time.sleep(1)
     print("[오류] 모든 경로 접속 실패", file=sys.stderr)
     sys.exit(1)
 
+def pick_link(container):
+    """행 안에서 상세보기로 보이는 링크를 찾되, 확실치 않으면 목록 주소 사용"""
+    for a in container.find_all("a"):
+        href = a.get("href", "")
+        if not href or href == "#" or href.lower().startswith("javascript"):
+            continue
+        if "FileDown" in href or "Download" in href:   # 첨부파일 링크 제외
+            continue
+        if "nttId" in href or "view" in href.lower():
+            if href.startswith("http"):
+                return href
+            return BASE + (href if href.startswith("/") else "/" + href)
+    return TARGET
+
 def parse(html: str):
     soup = BeautifulSoup(html, "html.parser")
-    items, seen = [], set()
+    # 헤더/푸터/내비 제거 (본문만 남기기)
+    for sel in ("header", "footer", "nav", "script", "style"):
+        for t in soup.find_all(sel):
+            t.decompose()
 
-    def add(title, date, href):
-        title = re.sub(r"\s+", " ", title).strip()
-        if len(title) < 4 or title in seen:
-            return
-        seen.add(title)
-        items.append({"title": title, "date": date, "href": norm_href(href)})
+    items, seen = [], []
 
-    # 1차: nttId 링크
+    # 1차: nttId 링크 방식 (있으면 가장 정확)
     for a in soup.select('a[href*="nttId"]'):
-        add(a.get_text(strip=True), find_date(a), a.get("href", ""))
-        if len(items) >= MAX_ITEMS: return items
+        title = re.sub(r"\s+", " ", a.get_text(strip=True))
+        if len(title) < 8 or title in seen:
+            continue
+        node = a
+        date = ""
+        for _ in range(4):
+            if node is None: break
+            m = DATE_RE.search(node.get_text(" ", strip=True))
+            if m:
+                date = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+                break
+            node = node.parent
+        seen.append(title)
+        href = a.get("href", "")
+        href = href if href.startswith("http") else BASE + (href if href.startswith("/") else "/" + href)
+        items.append({"title": title, "date": date, "href": href})
 
-    # 2차: 표(tr) 기반
+    # 2차: 행 단위 파서 — 날짜 문자열에서 출발해 '작성자/조회' 표식이 있는
+    #       가장 가까운 조상(=게시글 한 행)을 찾고, 그 안의 가장 긴 텍스트를 제목으로
     if not items:
-        print("[진단] nttId 링크 없음 → 표(tr) 파서 시도")
-        for tr in soup.select("tr"):
-            a = tr.find("a")
-            m = DATE_RE.search(tr.get_text(" ", strip=True))
-            if not a or not m: continue
-            add(a.get_text(strip=True),
-                f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}",
-                a.get("href", ""))
-            if len(items) >= MAX_ITEMS: break
+        print("[진단] nttId 링크 없음 → 행 단위 파서 사용")
+        for el in soup.find_all(string=DATE_RE):
+            m = DATE_RE.search(str(el))
+            if not m:
+                continue
+            node = el.parent
+            row = None
+            for _ in range(7):
+                if node is None:
+                    break
+                t = node.get_text(" ", strip=True)
+                if ("작성자" in t or "조회" in t) and len(t) > 25:
+                    row = node
+                    break
+                node = node.parent
+            if row is None:
+                continue
+            # 제목 후보: 행 안에서 가장 긴 텍스트 (메타 정보·파일명·숫자 제외)
+            title = ""
+            for s in row.stripped_strings:
+                s = re.sub(r"\s+", " ", s).strip()
+                if len(s) <= len(title):
+                    continue
+                if s in META_WORDS:
+                    continue
+                if DATE_RE.search(s) and len(s) <= 14:
+                    continue
+                if re.fullmatch(r"[\d,]+", s):
+                    continue
+                low = s.lower()
+                if "다운로드" in s or low.endswith((".hwp", ".hwpx", ".pdf", ".xlsx", ".zip", ".docx")):
+                    continue
+                title = s
+            if len(title) < 8 or title in seen:
+                continue
+            seen.append(title)
+            items.append({
+                "title": title,
+                "date": f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}",
+                "href": pick_link(row),
+            })
 
-    # 3차: 목록(li) 기반
-    if not items:
-        print("[진단] 표 파서 실패 → 목록(li) 파서 시도")
-        for li_el in soup.select("li"):
-            a = li_el.find("a")
-            m = DATE_RE.search(li_el.get_text(" ", strip=True))
-            if not a or not m: continue
-            t = a.get_text(strip=True)
-            if len(t) < 8: continue
-            add(t, f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}",
-                a.get("href", ""))
-            if len(items) >= MAX_ITEMS: break
-    return items
+    # 최신순 정렬 후 상위 N건
+    items.sort(key=lambda x: x["date"], reverse=True)
+    return items[:MAX_ITEMS]
 
 def main():
     html = get_page()
