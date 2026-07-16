@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""우주항공청 사업공고 수집 스크립트 v7 (GitHub Actions에서 자동 실행)
+"""우주항공청 사업공고 수집 스크립트 v7.1 (GitHub Actions에서 자동 실행)
    - 사업·과제(R&D) 공고만 선별 (아래 키워드 목록으로 조정 가능)
    - 각 공고의 실제 상세 페이지 링크 추출 + 링크 보강ㆍ이전 링크 보존
    - 중계 경로 5종 × 3회 반복 재시도 (일시적 중계 장애 대응)
@@ -199,35 +199,42 @@ def merge_previous_links(items):
     return items
 
 def enrich_links(items):
-    """상세 링크가 없는 공고가 있으면 HTML 경로로 한 번 더 시도해 링크만 보강"""
+    """상세 링크가 없는 공고가 있으면 HTML 경로로 재시도해 링크만 보강 (3바퀴)"""
     if all("nttId" in it["href"] for it in items):
         return items
     print("[진단] 상세 링크 누락 → HTML 경로로 링크 보강 시도")
-    for name, url, tmo, kind in ROUTES:
-        if kind == "text":
-            continue
-        try:
-            res = requests.get(url, headers=HEADERS, timeout=tmo)
-            body = res.text
-            if kind == "aojson" and res.status_code == 200:
-                try:
-                    body = res.json().get("contents") or ""
-                except Exception:
-                    body = ""
-            if res.status_code != 200 or len(body) < 3000:
+    for attempt in range(1, RETRY_PASSES + 1):
+        for name, url, tmo, kind in ROUTES:
+            if kind == "text":
                 continue
-            link_map = {p["title"]: p["href"] for p in parse(body) if "nttId" in p["href"]}
-            hit = 0
-            for it in items:
-                if "nttId" not in it["href"] and it["title"] in link_map:
-                    it["href"] = link_map[it["title"]]
-                    hit += 1
-            if hit:
-                print(f"[진단] 링크 보강 성공: {hit}건 ({name})")
-                return items
-        except Exception:
-            pass
-        time.sleep(1)
+            try:
+                res = requests.get(url, headers=HEADERS, timeout=tmo)
+                body = res.text
+                if kind == "aojson" and res.status_code == 200:
+                    try:
+                        body = res.json().get("contents") or ""
+                    except Exception:
+                        body = ""
+                ok = res.status_code == 200 and len(body) > 3000
+                print(f"[진단] 보강 {attempt}차 {name} → 상태 {res.status_code}, 본문 {len(body):,}자 "
+                      f"{'✓' if ok else '✗'}")
+                if not ok:
+                    continue
+                link_map = {p["title"]: p["href"] for p in parse(body) if "nttId" in p["href"]}
+                hit = 0
+                for it in items:
+                    if "nttId" not in it["href"] and it["title"] in link_map:
+                        it["href"] = link_map[it["title"]]
+                        hit += 1
+                if hit:
+                    print(f"[진단] 링크 보강 성공: {hit}건 ({name})")
+                    return items
+            except Exception as e:
+                print(f"[진단] 보강 {attempt}차 {name} 실패: {type(e).__name__}")
+            time.sleep(1)
+        if attempt < RETRY_PASSES:
+            print(f"[진단] 보강 실패 — {RETRY_WAIT}초 후 재시도")
+            time.sleep(RETRY_WAIT)
     print("[진단] 링크 보강 실패 — 목록 주소 유지 (다음 자동 실행에서 재시도)")
     return items
 
