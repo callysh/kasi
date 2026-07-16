@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""우주항공청 사업공고 수집 스크립트 v7.1 (GitHub Actions에서 자동 실행)
+"""우주항공청 사업공고 수집 스크립트 v7.2 (GitHub Actions에서 자동 실행)
    - 사업·과제(R&D) 공고만 선별 (아래 키워드 목록으로 조정 가능)
    - 각 공고의 실제 상세 페이지 링크 추출 + 링크 보강ㆍ이전 링크 보존
    - 중계 경로 5종 × 3회 반복 재시도 (일시적 중계 장애 대응)
@@ -82,6 +82,21 @@ def row_link(row) -> str:
         if "nttId" in href and "FileDown" not in href:
             return href if href.startswith("http") else BASE + (href if href.startswith("/") else "/" + href)
     return TARGET
+
+def diagnose_html(html: str):
+    """HTML 안에 게시글 ID가 존재하는지 법의학적 진단"""
+    n_ntt = html.count("nttId")
+    ids = NTT_RE.findall(html)
+    print(f"[진단] HTML 검사: 'nttId' 문자열 {n_ntt}회, ID 패턴(B+숫자) {len(set(ids))}종 발견")
+    if ids:
+        print(f"[진단] ID 예시: {list(dict.fromkeys(ids))[:3]}")
+    else:
+        # 첫 공고 제목 근처의 원본 코드를 보여줘 실제 마크업 파악
+        m = re.search(r"(공고|사업)", html)
+        if m:
+            start = max(0, m.start() - 150)
+            snippet = html[start:m.start() + 350].replace("\n", " ")
+            print(f"[진단] 제목 주변 원본 코드:\n{snippet}")
 
 def parse(html: str):
     soup = BeautifulSoup(html, "html.parser")
@@ -220,6 +235,7 @@ def enrich_links(items):
                       f"{'✓' if ok else '✗'}")
                 if not ok:
                     continue
+                diagnose_html(body)
                 link_map = {p["title"]: p["href"] for p in parse(body) if "nttId" in p["href"]}
                 hit = 0
                 for it in items:
@@ -240,6 +256,10 @@ def enrich_links(items):
 
 def main():
     html, kind = get_page()
+    if kind == "html":
+        diagnose_html(html)
+    else:
+        print("[진단] 텍스트 경로(jina)로 수집됨 — 상세 링크는 보강 단계에서 시도")
     items = parse_text(html) if kind == "text" else parse(html)
     items = merge_previous_links(items)
     items = enrich_links(items)
