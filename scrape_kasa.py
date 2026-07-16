@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""우주항공청 사업공고 수집 스크립트 v5 (GitHub Actions에서 자동 실행)
+"""우주항공청 사업공고 수집 스크립트 v6 (GitHub Actions에서 자동 실행)
    - 사업·과제(R&D) 공고만 선별 (아래 키워드 목록으로 조정 가능)
    - 각 공고의 실제 상세 페이지 링크 추출
+   - 중계 경로 5종 × 3회 반복 재시도 (일시적 중계 장애 대응)
 """
 import json, re, sys, time
 import urllib.parse
@@ -29,12 +30,17 @@ HEADERS = {
 }
 
 q = urllib.parse.quote(TARGET, safe="")
+# kind: html(원본 HTML) / aojson(allorigins JSON 포장) / text(jina 텍스트 변환)
 ROUTES = [
-    ("직접 접속", TARGET, 12),
-    ("중계: allorigins", f"https://api.allorigins.win/raw?url={q}", 40),
-    ("중계: codetabs",   f"https://api.codetabs.com/v1/proxy?quest={q}", 40),
-    ("중계: corsproxy",  f"https://corsproxy.io/?url={q}", 40),
+    ("직접 접속",            TARGET,                                              12, "html"),
+    ("중계: allorigins raw", f"https://api.allorigins.win/raw?url={q}",           40, "html"),
+    ("중계: allorigins get", f"https://api.allorigins.win/get?url={q}",           40, "aojson"),
+    ("중계: codetabs",       f"https://api.codetabs.com/v1/proxy?quest={q}",      40, "html"),
+    ("중계: corsproxy",      f"https://corsproxy.io/?url={q}",                    40, "html"),
+    ("중계: jina reader",    f"https://r.jina.ai/{TARGET}",                       50, "text"),
 ]
+RETRY_PASSES = 3        # 전체 경로를 몇 바퀴 재시도할지
+RETRY_WAIT = 25         # 바퀴 사이 대기(초)
 
 def wanted(title: str) -> bool:
     if any(k in title for k in EXCLUDE_KW):
@@ -42,18 +48,28 @@ def wanted(title: str) -> bool:
     return any(k in title for k in INCLUDE_KW)
 
 def get_page():
-    for name, url, tmo in ROUTES:
-        try:
-            res = requests.get(url, headers=HEADERS, timeout=tmo)
-            ok = res.status_code == 200 and len(res.text) > 3000
-            print(f"[진단] {name} → 상태 {res.status_code}, 본문 {len(res.text):,}자 "
-                  f"{'✓ 사용' if ok else '✗ 건너뜀'}")
-            if ok:
-                return res.text
-        except Exception as e:
-            print(f"[진단] {name} 실패: {type(e).__name__}")
-        time.sleep(1)
-    print("[오류] 모든 경로 접속 실패", file=sys.stderr)
+    for attempt in range(1, RETRY_PASSES + 1):
+        for name, url, tmo, kind in ROUTES:
+            try:
+                res = requests.get(url, headers=HEADERS, timeout=tmo)
+                body = res.text
+                if kind == "aojson" and res.status_code == 200:
+                    try:
+                        body = res.json().get("contents") or ""
+                    except Exception:
+                        body = ""
+                ok = res.status_code == 200 and len(body) > 3000
+                print(f"[진단] {attempt}차 {name} → 상태 {res.status_code}, 본문 {len(body):,}자 "
+                      f"{'✓ 사용' if ok else '✗ 건너뜀'}")
+                if ok:
+                    return body, ("text" if kind == "text" else "html")
+            except Exception as e:
+                print(f"[진단] {attempt}차 {name} 실패: {type(e).__name__}")
+            time.sleep(1)
+        if attempt < RETRY_PASSES:
+            print(f"[진단] 전 경로 실패 — {RETRY_WAIT}초 후 {attempt + 1}차 재시도")
+            time.sleep(RETRY_WAIT)
+    print("[오류] 모든 경로 접속 실패 (총 %d바퀴)" % RETRY_PASSES, file=sys.stderr)
     sys.exit(1)
 
 def row_link(row) -> str:
@@ -119,9 +135,54 @@ def parse(html: str):
     items.sort(key=lambda x: x["date"], reverse=True)
     return items[:MAX_ITEMS]
 
+def parse_text(text: str):
+    """jina 등 텍스트 변환 결과 파서"""
+    items, seen = [], set()
+    # 1) 마크다운 링크에 nttId가 있으면 가장 정확
+    for m in re.finditer(r"\[([^\]]{8,120})\]\((https?://[^\)]*nttId[^\)]*)\)", text):
+        title = re.sub(r"\s+", " ", m.group(1)).strip()
+        if title in seen or not wanted(title):
+            continue
+        # 링크 주변 200자에서 날짜 탐색
+        around = text[max(0, m.start() - 100): m.end() + 200]
+        dm = DATE_RE.search(around)
+        date = f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else ""
+        seen.add(title)
+        items.append({"title": title, "date": date, "href": m.group(2)})
+    if items:
+        items.sort(key=lambda x: x["date"], reverse=True)
+        return items[:MAX_ITEMS]
+    # 2) 날짜 줄에서 출발해 인접한 긴 줄을 제목으로
+    lines = [re.sub(r"[\*#|`\[\]]", " ", ln).strip() for ln in text.splitlines()]
+    for i, ln in enumerate(lines):
+        m = DATE_RE.search(ln)
+        if not m or len(ln) > 40:
+            continue
+        title = ""
+        for back in range(1, 6):
+            if i - back < 0:
+                break
+            cand = re.sub(r"\s+", " ", lines[i - back]).strip()
+            if len(cand) < 10 or any(w in cand for w in META_WORDS):
+                continue
+            if DATE_RE.search(cand) or re.fullmatch(r"[\d,\s]+", cand):
+                continue
+            if len(cand) > len(title):
+                title = cand
+        if len(title) < 8 or title in seen or not wanted(title):
+            continue
+        seen.add(title)
+        items.append({
+            "title": title,
+            "date": f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}",
+            "href": TARGET,
+        })
+    items.sort(key=lambda x: x["date"], reverse=True)
+    return items[:MAX_ITEMS]
+
 def main():
-    html = get_page()
-    items = parse(html)
+    html, kind = get_page()
+    items = parse_text(html) if kind == "text" else parse(html)
     if not items:
         snippet = re.sub(r"\s+", " ", html[:1500])
         print(f"[오류] 공고를 찾지 못했습니다. 페이지 앞부분:\n{snippet}", file=sys.stderr)
