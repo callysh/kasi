@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""우주항공청 사업공고 수집 스크립트 v6 (GitHub Actions에서 자동 실행)
+"""우주항공청 사업공고 수집 스크립트 v7 (GitHub Actions에서 자동 실행)
    - 사업·과제(R&D) 공고만 선별 (아래 키워드 목록으로 조정 가능)
-   - 각 공고의 실제 상세 페이지 링크 추출
+   - 각 공고의 실제 상세 페이지 링크 추출 + 링크 보강ㆍ이전 링크 보존
    - 중계 경로 5종 × 3회 반복 재시도 (일시적 중계 장애 대응)
 """
 import json, re, sys, time
@@ -180,9 +180,62 @@ def parse_text(text: str):
     items.sort(key=lambda x: x["date"], reverse=True)
     return items[:MAX_ITEMS]
 
+def merge_previous_links(items):
+    """이전 kasa_feed.json에서 확보했던 상세 링크(nttId)를 제목 기준으로 보존"""
+    try:
+        with open("kasa_feed.json", encoding="utf-8") as f:
+            prev = json.load(f)
+        prev_map = {p.get("title"): p.get("href") for p in prev.get("items", [])
+                    if "nttId" in str(p.get("href", ""))}
+        kept = 0
+        for it in items:
+            if "nttId" not in it["href"] and it["title"] in prev_map:
+                it["href"] = prev_map[it["title"]]
+                kept += 1
+        if kept:
+            print(f"[진단] 이전 데이터에서 상세 링크 {kept}건 보존")
+    except Exception:
+        pass
+    return items
+
+def enrich_links(items):
+    """상세 링크가 없는 공고가 있으면 HTML 경로로 한 번 더 시도해 링크만 보강"""
+    if all("nttId" in it["href"] for it in items):
+        return items
+    print("[진단] 상세 링크 누락 → HTML 경로로 링크 보강 시도")
+    for name, url, tmo, kind in ROUTES:
+        if kind == "text":
+            continue
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=tmo)
+            body = res.text
+            if kind == "aojson" and res.status_code == 200:
+                try:
+                    body = res.json().get("contents") or ""
+                except Exception:
+                    body = ""
+            if res.status_code != 200 or len(body) < 3000:
+                continue
+            link_map = {p["title"]: p["href"] for p in parse(body) if "nttId" in p["href"]}
+            hit = 0
+            for it in items:
+                if "nttId" not in it["href"] and it["title"] in link_map:
+                    it["href"] = link_map[it["title"]]
+                    hit += 1
+            if hit:
+                print(f"[진단] 링크 보강 성공: {hit}건 ({name})")
+                return items
+        except Exception:
+            pass
+        time.sleep(1)
+    print("[진단] 링크 보강 실패 — 목록 주소 유지 (다음 자동 실행에서 재시도)")
+    return items
+
 def main():
     html, kind = get_page()
     items = parse_text(html) if kind == "text" else parse(html)
+    items = merge_previous_links(items)
+    items = enrich_links(items)
     if not items:
         snippet = re.sub(r"\s+", " ", html[:1500])
         print(f"[오류] 공고를 찾지 못했습니다. 페이지 앞부분:\n{snippet}", file=sys.stderr)
