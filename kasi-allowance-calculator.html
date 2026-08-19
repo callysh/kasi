@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta name="robots" content="noindex,nofollow"><meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KASI 연구수당 한도 계산기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --space-deep: #0a1030;
+      --space-mid: #121c4d;
+      --space-panel: #101a44;
+      --bg: #f3f5fb;
+      --ink: #1c2444;
+      --muted: #5e6787;
+      --line: #dbe0ef;
+      --panel: #ffffff;
+      --cobalt: #2f52c7;
+      --cobalt-dark: #22398f;
+      --cobalt-soft: #e7ecfb;
+      --gold: #b97e14;
+      --gold-soft: #fdf3dc;
+      --star: #f0b940;
+      --red: #c53a5f;
+      --red-soft: #fdeaf0;
+      --ok: #0f8a6d;
+      --ok-soft: #e2f6ef;
+      --teal: var(--cobalt);
+      --teal-dark: var(--cobalt-dark);
+      --blue: var(--cobalt);
+      --amber: var(--gold);
+      --num-font: "Space Grotesk", "Noto Sans KR", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    .field select {
+      width: 100%; min-height: 44px; padding: 8px 12px;
+      border: 1px solid #d5dbec; border-radius: 10px;
+      font: inherit; font-weight: 800; background: #fff;
+    }
+    .table-note { margin: 0 0 10px; font-size: .78rem; color: #5a6480; }
+    .year-table-wrap { border: 1px solid #dfe4f0; border-radius: 12px; background: #fff; overflow: hidden; }
+    .year-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .78rem; }
+    .year-table th, .year-table td { border-bottom: 1px solid #eef1f8; padding: 6px 4px; text-align: right; }
+    .year-table thead th {
+      background: #f4f6fd; font-size: .7rem; color: #3c4666;
+      white-space: normal; word-break: keep-all; line-height: 1.3; vertical-align: middle;
+    }
+    .year-table col.ycol-year { width: 58px; }
+    .year-table tbody th, .year-table tfoot th { text-align: left; font-size: .74rem; color: #303a5c; background: #fafbff; white-space: nowrap; padding-left: 8px; }
+    .year-table tfoot td { overflow: hidden; text-overflow: ellipsis; }
+    .year-table tbody input.ycell {
+      width: 100%; min-width: 0; border: 1px solid transparent; border-radius: 6px;
+      padding: 6px 3px; text-align: right; font: inherit; font-size: .8rem; font-weight: 700; background: transparent;
+    }
+    .year-table tbody input.ycell:hover { border-color: #d5dbec; }
+    .year-table tbody input.ycell:focus { outline: none; border-color: var(--cobalt, #0068b7); background: #f6faff; }
+    .year-table tfoot td { font-weight: 900; background: #f4f6fd; }
+    .table-unit { margin: 8px 0 0; font-size: .76rem; color: #5a6480; text-align: right; }
+    .exec-graphs { display: grid; gap: 14px; margin-top: 16px; }
+    .graph-row { display: grid; gap: 6px; }
+    .graph-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .graph-head span { font-size: .84rem; font-weight: 850; color: #2c3556; }
+    .graph-head strong { font-family: var(--num-font); font-size: 1.05rem; font-weight: 800; color: var(--cobalt, #0068b7); }
+    .graph-head strong.danger { color: #e30113; }
+    .graph-track { position: relative; height: 14px; border-radius: 999px; background: #e9edf8; overflow: visible; }
+    .graph-fill {
+      height: 100%; width: 0; border-radius: 999px;
+      background: linear-gradient(90deg, #0068b7, #3f8fd2);
+      transition: width .35s ease;
+    }
+    .graph-fill.danger { background: linear-gradient(90deg, #e30113, #ff6a5c); }
+    .graph-mark {
+      position: absolute; top: -4px; bottom: -4px; width: 3px; border-radius: 2px;
+      background: #f0b940; box-shadow: 0 0 0 1px rgba(0,0,0,.12); pointer-events: none;
+    }
+    .graph-caption { font-size: .72rem; color: #5a6480; text-align: right; }
+    .lang-toggle {
+      position: absolute; top: 16px; right: 16px; z-index: 5;
+      display: flex; border: 1px solid rgba(255,255,255,.3);
+      border-radius: 999px; overflow: hidden;
+    }
+    .lang-toggle { background: rgba(10,16,48,.35); }
+    .lang-btn {
+      padding: 4px 11px; border: none; background: transparent;
+      color: rgba(237,240,252,.72);
+      font-family: var(--num-font); font-size: .72rem; font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .lang-btn.active { background: #fff; color: var(--space-deep); }
+    html { min-width: 320px; background: var(--bg); }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    .shell { width: min(1180px, 100%); margin: 0 auto; padding: 24px 28px 40px; }
+
+    /* ── 밤하늘 히어로 ─────────────────────────────── */
+    .top {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, 540px);
+      gap: 26px;
+      align-items: center;
+      margin: 4px 0 26px;
+      padding: 36px 32px 32px;
+      border-radius: 20px;
+      color: #edf0fc;
+      background:
+        radial-gradient(1100px 480px at 88% -12%, rgba(111, 91, 216, .32), transparent 62%),
+        radial-gradient(900px 460px at -6% 112%, rgba(47, 82, 199, .38), transparent 58%),
+        linear-gradient(158deg, var(--space-deep), var(--space-mid) 55%, var(--space-deep));
+    }
+    .top::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1.4px 1.4px at 22% 28%, rgba(255,255,255,.9), transparent 55%),
+        radial-gradient(1.1px 1.1px at 68% 12%, rgba(255,255,255,.8), transparent 55%),
+        radial-gradient(1.6px 1.6px at 84% 46%, rgba(240,185,64,.9), transparent 55%),
+        radial-gradient(1px 1px at 44% 64%, rgba(255,255,255,.7), transparent 55%),
+        radial-gradient(1.2px 1.2px at 8% 76%, rgba(255,255,255,.75), transparent 55%),
+        radial-gradient(1px 1px at 92% 82%, rgba(255,255,255,.6), transparent 55%),
+        radial-gradient(1.3px 1.3px at 56% 38%, rgba(255,255,255,.85), transparent 55%);
+      background-size: 620px 420px;
+      background-repeat: repeat;
+      opacity: .75;
+      animation: twinkle 6.5s ease-in-out infinite alternate;
+    }
+    .top::after {
+      content: "";
+      position: absolute;
+      top: -230px;
+      left: -160px;
+      width: 560px;
+      height: 560px;
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 50%;
+      transform: rotate(-14deg);
+    }
+    @keyframes twinkle { from { opacity: .45; } to { opacity: .85; } }
+    @media (prefers-reduced-motion: reduce) {
+      .top::before { animation: none; }
+    }
+    .top > * { position: relative; z-index: 1; }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--star);
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { max-width: 760px; font-size: 2.5rem; line-height: 1.14; font-weight: 900; color: #fff; }
+    .lead { max-width: 760px; margin-top: 13px; color: #c3cbec; font-size: .98rem; line-height: 1.72; }
+
+    /* ── 핵심 지표 카드 ────────────────────────────── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .summary {
+      display: grid;
+      min-height: 118px;
+      align-content: space-between;
+      gap: 10px;
+      padding: 17px 18px;
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 14px 32px rgba(5, 9, 32, .3);
+    }
+    .summary.primary {
+      position: relative;
+      overflow: hidden;
+      margin-top: 22px;
+      min-height: 130px;
+      max-width: 460px;
+      border: 1.5px solid rgba(240, 185, 64, .55);
+      background:
+        radial-gradient(360px 200px at 100% 0%, rgba(111, 91, 216, .35), transparent 60%),
+        linear-gradient(150deg, #16225e, #0d1438);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 14px 32px rgba(5, 9, 32, .45), inset 0 0 34px rgba(240, 185, 64, .06);
+    }
+    .summary.primary::after {
+      content: "";
+      position: absolute;
+      top: -130px;
+      right: -110px;
+      width: 250px;
+      height: 250px;
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 50%;
+    }
+    .summary span { color: var(--muted); font-size: .8rem; font-weight: 800; }
+    .summary strong {
+      display: block;
+      font-family: var(--num-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -.01em;
+      word-break: keep-all;
+    }
+    .summary.primary span { color: #a9b3dd; }
+    .summary.primary strong { color: var(--star); font-size: 2rem; }
+    .summary-meter { height: 9px; overflow: hidden; border-radius: 999px; background: #e9ecf6; }
+    .summary-fill { width: 0; height: 100%; border-radius: inherit; background: var(--cobalt); }
+    .status {
+      width: max-content;
+      max-width: 100%;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: .74rem;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+    .ok { background: var(--ok-soft); color: var(--ok); }
+    .warn { background: var(--gold-soft); color: var(--gold); }
+    .danger { background: var(--red-soft); color: var(--red); }
+    .neutral { background: #e9ecf6; color: #5b6488; }
+    .summary.primary .neutral { background: rgba(255, 255, 255, .12); color: #c3cbec; }
+
+    /* ── 작업 영역 ─────────────────────────────────── */
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 22px;
+      align-items: start;
+    }
+    .input-pane, .result-pane { display: grid; gap: 14px; min-width: 0; }
+    .result-pane { position: sticky; top: 14px; }
+    .tool-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(14px);
+    }
+    .segmented, .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .segmented { padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: #edf0f9; }
+    button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      font-weight: 850;
+    }
+    .segmented button { padding: 0 12px; background: transparent; color: #4c5578; }
+    .segmented button.active { background: var(--cobalt); color: #fff; }
+    .actions button, .actions a {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 8px;
+      background: var(--space-panel);
+      color: #fff;
+      font-size: .9rem;
+      font-weight: 850;
+      text-decoration: none;
+    }
+    .actions button + button, .actions a { background: #e9ecf6; color: var(--ink); }
+    .band, .result-card, .source-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+    .band { display: grid; gap: 18px; padding: 22px; }
+    .band-head { display: flex; gap: 12px; align-items: center; }
+    .band-head > span {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 28%, #24316b, var(--space-deep));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), 0 0 0 4px var(--cobalt-soft);
+      color: #ffd98a;
+      font-family: var(--num-font);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+    .band-head h2 { font-size: 1.22rem; font-weight: 900; }
+    .band-head p { margin-top: 3px; color: var(--muted); font-size: .86rem; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field {
+      position: relative;
+      display: grid;
+      min-width: 0;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafbfe;
+    }
+    .field span { display: grid; gap: 3px; min-height: 45px; font-size: .91rem; font-weight: 850; line-height: 1.35; }
+    .field small { color: var(--muted); font-size: .74rem; font-weight: 650; line-height: 1.35; }
+    .field input {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 10px;
+      border: 1px solid #ccd3ea;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-family: var(--num-font);
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: right;
+    }
+    .field[data-money-field] input { padding-right: 58px; }
+    .field[data-rate-field] input, .field[data-count-field] input { padding-right: 38px; }
+    .field[data-year-field] select { padding-right: 92px; }
+    .field[data-year-field] { position: relative; }
+    .field[data-year-field]::after {
+      content: attr(data-suffix);
+      position: absolute; right: 36px; bottom: 22px;
+      font-size: .8rem; font-weight: 700; color: var(--muted); pointer-events: none;
+    }
+    .field[data-money-field]::after, .field[data-rate-field]::after, .field[data-count-field]::after {
+      position: absolute;
+      right: 23px;
+      bottom: 23px;
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 850;
+      pointer-events: none;
+    }
+    .field[data-money-field]::after { content: attr(data-unit-label); }
+    .field[data-rate-field]::after { content: "%"; }
+    .field[data-count-field]::after { content: attr(data-suffix); }
+    input:focus, button:focus, a:focus { outline: 3px solid rgba(47, 82, 199, .3); outline-offset: 2px; }
+
+    /* ── 계산 결과 ─────────────────────────────────── */
+    .result-card {
+      display: grid;
+      gap: 18px;
+      padding: 20px;
+      box-shadow: 0 14px 34px rgba(20, 28, 66, .1);
+    }
+    .result-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .result-top .eyebrow { margin-bottom: 6px; color: var(--cobalt-dark); letter-spacing: .12em; }
+    .result-top h2 { margin-top: 4px; font-size: 1.42rem; font-weight: 900; }
+    .result-top button { flex: 0 0 auto; padding: 0 14px; background: var(--cobalt); color: #fff; }
+    .result-top button:hover { background: var(--cobalt-dark); }
+    .amount-box { display: grid; gap: 10px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .amount-section {
+      padding-top: 6px;
+      color: var(--cobalt-dark);
+      font-size: .78rem;
+      font-weight: 900;
+      letter-spacing: .06em;
+    }
+    .amount-section:first-child { padding-top: 0; }
+    .amount-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .amount-row span { color: var(--muted); font-size: .82rem; font-weight: 820; }
+    .amount-row strong { text-align: right; font-family: var(--num-font); font-size: 1.02rem; font-weight: 700; }
+    .meter { display: grid; gap: 8px; }
+    .meter-head { display: flex; justify-content: space-between; gap: 10px; }
+    .meter-head span { font-size: .88rem; font-weight: 850; }
+    .meter-head strong { font-family: var(--num-font); font-size: .9rem; font-weight: 700; }
+    .meter-track { height: 13px; overflow: hidden; border-radius: 999px; background: #e9ecf6; }
+    .meter-fill { width: 0; height: 100%; border-radius: inherit; background: var(--cobalt); }
+    .memo { display: grid; gap: 8px; }
+    .memo h3 { font-size: 1rem; font-weight: 900; }
+    .memo p, .source-card p, .source-card dd { color: #444e73; font-size: .84rem; line-height: 1.55; }
+    .source-card { display: grid; gap: 12px; padding: 18px; }
+    .source-card h2 { font-size: 1.05rem; font-weight: 900; }
+    .source-card dl { display: grid; gap: 9px; margin: 0; }
+    .source-card dt { font-size: .85rem; font-weight: 900; }
+    .source-card dd { margin: 2px 0 0; color: var(--muted); }
+    .source-card nav { display: flex; flex-wrap: wrap; gap: 8px; }
+    .source-card a {
+      padding: 7px 9px;
+      border: 1px solid #ccd3ea;
+      border-radius: 8px;
+      color: var(--cobalt-dark);
+      font-size: .8rem;
+      font-weight: 850;
+      text-decoration: none;
+    }
+    .source-card a:hover { border-color: var(--cobalt); background: var(--cobalt-soft); }
+
+    @media (max-width: 980px) {
+      .top, .workspace { grid-template-columns: 1fr; }
+      .result-pane { position: static; }
+    }
+    @media (max-width: 680px) {
+      .shell { padding: 16px 18px 28px; }
+      .top { padding: 26px 20px 24px; }
+      .top::after { display: none; }
+      h1 { font-size: 2rem; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .field-grid { grid-template-columns: 1fr; }
+      .segmented, .actions { width: 100%; }
+      .segmented button, .actions button, .actions a { flex: 1 1 92px; }
+      .amount-row { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="top" style="position:relative">
+      <div class="lang-toggle" role="group" aria-label="Language" style="position:absolute;top:14px;right:14px;z-index:5;width:auto">
+        <button type="button" class="lang-btn active" data-lang="ko">KOR</button>
+        <button type="button" class="lang-btn" data-lang="en">ENG</button>
+      </div>
+      <div>
+        <p class="eyebrow">KASILog</p>
+        <h1>연구수당 한도 계산기</h1>
+        <p class="lead">단계 연차 수를 선택하고 연차별 금액을 입력하면 단계 합산이 자동으로 계산됩니다. 혁신법 사용기준(연구수당지급비율 ≤ 직접비사용비율 + 20%p)에 따라 계상한도와 집행 가능 여부를 사전점검할 수 있습니다.</p>
+        <article class="summary primary">
+          <span id="heroLabel">연구수당 최대 계상한도</span>
+          <strong id="heroCap">0원</strong>
+          <p id="heroStatus" class="status neutral">대기</p>
+        </article>
+      </div>
+      <div class="summary-grid">
+        <article class="summary">
+          <span>한도 대비 편성률</span>
+          <strong id="heroPlanningUsage">0%</strong>
+          <div class="summary-meter"><div id="heroPlanningBar" class="summary-fill"></div></div>
+          <p id="heroPlanningStatus" class="status neutral">대기</p>
+        </article>
+        <article class="summary">
+          <span>연구수당 지급 가능률</span>
+          <strong id="heroPayableRate">0%</strong>
+          <div class="summary-meter"><div id="heroPayableBar" class="summary-fill"></div></div>
+          <p id="heroPayableStatus" class="status neutral">대기</p>
+        </article>
+        <article class="summary">
+          <span>연구수당 지급비율</span>
+          <strong id="heroExecutionUsage">0%</strong>
+          <div class="summary-meter"><div id="heroExecutionBar" class="summary-fill"></div></div>
+          <p id="heroExecutionStatus" class="status neutral">대기</p>
+        </article>
+        <article class="summary">
+          <span>1인 최대 지급률</span>
+          <strong id="heroIndividualRate">0%</strong>
+          <div class="summary-meter"><div id="heroIndividualBar" class="summary-fill"></div></div>
+          <p id="heroIndividualStatus" class="status neutral">대기</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="input-pane">
+        <div class="tool-strip">
+          <div class="segmented" aria-label="입력 단위">
+            <button type="button" data-unit="won">원</button>
+            <button type="button" data-unit="thousand" class="active">천원</button>
+            <button type="button" data-unit="man">만원</button>
+            <button type="button" data-unit="million">백만원</button>
+          </div>
+          <div class="actions">
+            <button type="button" id="exampleButton">예시 입력</button>
+            <button type="button" id="resetButton">초기화</button>
+            <a href="kasi-budget-helper.html">편성 도우미</a>
+          </div>
+        </div>
+
+        <section class="band">
+          <div class="band-head"><span>01</span><div><h2>과제 기본정보</h2><p>해당 단계의 연차 수와 공통 기준을 선택하세요</p></div></div>
+          <div class="field-grid">
+            <label class="field" data-year-field data-suffix="차년도"><span>해당 단계 연차 수<small>단계 기준으로 연차 설정</small></span>
+              <select id="yearCount">
+                <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+              </select>
+            </label>
+            <label class="field" data-rate-field><span>연구수당 한도<small>수정인건비의 20%까지 편성 가능</small></span><input id="allowanceRate" inputmode="decimal" value="20" /></label>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="band-head"><span>02</span><div><h2>연차별 편성 입력</h2><p>연구수당 계상한도와 지급비율·사용비율 계산의 기준 금액</p></div></div>
+          <p class="table-note">직접비 총액은 연구수당 포함 금액으로 입력하세요 (자동 제외 계산). 각 연차의 금액을 입력하면 단계 합산은 자동입니다.</p>
+          <div class="year-table-wrap">
+            <table class="year-table">
+              <colgroup><col class="ycol-year" /></colgroup>
+              <thead>
+                <tr><th>연차</th><th>내부인건비</th><th>외부인건비</th><th>학생인건비</th><th>미지급인건비</th><th>연구수당 편성액</th><th>직접비 총액</th></tr>
+              </thead>
+              <tbody id="yearRows"></tbody>
+              <tfoot>
+                <tr><th>합계 (단계)</th><td id="sum_internalLabor">0</td><td id="sum_externalLabor">0</td><td id="sum_studentLabor">0</td><td id="sum_unpaidLabor">0</td><td id="sum_allowanceAmount">0</td><td id="sum_directBudget">0</td></tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="table-unit">금액 단위: <strong id="tableUnitHint">천원</strong></p>
+        </section>
+
+        <section class="band">
+          <div class="band-head"><span>03</span><div><h2>직접비 사용비율 및 연구수당 지급비율 점검</h2><p>단계 통합 기준 · 연구수당지급비율 ≤ 직접비사용비율(연구수당 제외) + 20%p</p></div></div>
+          <p class="table-note">직접비 집행액은 연구수당 집행 포함 금액으로 입력하세요 (자동 제외 계산). 인건비 집행액은 수정인건비 기준(내부+외부+학생+미지급 집행 합계)입니다.</p>
+          <div class="year-table-wrap">
+            <table class="year-table exec-table">
+              <colgroup><col class="ycol-year" /></colgroup>
+              <thead>
+                <tr><th>연차</th><th>인건비 집행액</th><th>직접비 집행액</th><th>연구수당 집행액</th></tr>
+              </thead>
+              <tbody id="execRows"></tbody>
+              <tfoot>
+                <tr><th>합계 (단계)</th><td id="sum_executedLabor">0</td><td id="sum_directSpent">0</td><td id="sum_executedAllowance">0</td></tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="exec-graphs">
+            <div class="graph-row">
+              <div class="graph-head"><span>연구수당 집행한도 (인건비 집행 대비)</span><strong id="gCapRate">0%</strong></div>
+              <div class="graph-track"><div id="gCapBar" class="graph-fill"></div><span class="graph-mark" style="left:100%"></span></div>
+              <div class="graph-caption" id="gCapCaption">계상한도: –</div>
+            </div>
+            <div class="graph-row">
+              <div class="graph-head"><span>직접비 사용비율 (연구수당 제외)</span><strong id="gUsageRate">0%</strong></div>
+              <div class="graph-track"><div id="gUsageBar" class="graph-fill"></div></div>
+              <div class="graph-caption" id="gUsageCaption">연구수당 제외 기준: –</div>
+            </div>
+            <div class="graph-row">
+              <div class="graph-head"><span>연구수당 지급비율</span><strong id="gPaymentRate">0%</strong></div>
+              <div class="graph-track"><div id="gPaymentBar" class="graph-fill"></div><span class="graph-mark" id="gPayableMark" style="left:0%"></span></div>
+              <div class="graph-caption" id="gPayableCaption">지급 가능선(사용비율 +20%p): –</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="band-head"><span>04</span><div><h2>1인 지급률 점검</h2><p>참여연구원 수에 따른 개인별 최대 지급률</p></div></div>
+          <div class="field-grid">
+            <label class="field" data-count-field data-suffix="명"><span>단계 기간 내 참여연구원 수<small>단계 기간 중 하루 이상 참여한 모든 연구원 수</small></span><input id="participantCount" inputmode="numeric" value="1" /></label>
+            <label class="field" data-money-field data-unit-label="천원"><span>1인 최대 지급 예정액<small>가장 많이 받는 참여연구원 기준</small></span><input id="maxIndividualAllowance" inputmode="decimal" placeholder="0" /></label>
+          </div>
+          <div class="exec-graphs">
+            <div class="graph-row">
+              <div class="graph-head"><span>1인 최대 지급률</span><strong id="gIndivRate">0%</strong></div>
+              <div class="graph-track"><div id="gIndivBar" class="graph-fill"></div><span class="graph-mark" id="gIndivMark" style="left:100%"></span></div>
+              <div class="graph-caption" id="gIndivCaption">적용 기준: 1인 100%</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="result-pane">
+        <div class="result-card">
+          <div class="result-top">
+            <div><p class="eyebrow">계산 결과</p><h2 id="resultTitle">입력 대기</h2></div>
+            <button type="button" id="copyButton">결과 복사</button>
+          </div>
+
+          <div class="amount-box">
+            <div class="amount-section">편성 한도</div>
+            <div class="amount-row"><span>내부인건비</span><strong id="rowInternal">0원</strong></div>
+            <div class="amount-row"><span>외부인건비</span><strong id="rowExternal">0원</strong></div>
+            <div class="amount-row"><span>학생인건비</span><strong id="rowStudent">0원</strong></div>
+            <div class="amount-row"><span>미지급인건비</span><strong id="rowUnpaid">0원</strong></div>
+            <div class="amount-row"><span>수정인건비</span><strong id="rowModifiedLabor">0원</strong></div>
+            <div class="amount-row"><span>연구수당 최대 계상한도</span><strong id="rowCap">0원</strong></div>
+            <div class="amount-row"><span>연구수당 편성액</span><strong id="rowAllowance">0원</strong></div>
+            <div class="amount-row"><span>잔여/초과 금액</span><strong id="rowBalance">0원</strong></div>
+            <div class="amount-section">집행 사전점검</div>
+            <div class="amount-row"><span>직접비 사용비율 (연구수당 제외)</span><strong id="rowDirectUsageRate">0%</strong></div>
+            <div class="amount-row"><span>지급 가능률 (사용비율 +20%p)</span><strong id="rowPayableRate">0%</strong></div>
+            <div class="amount-row"><span>연구수당 지급비율</span><strong id="rowPaymentRate">0%</strong></div>
+            <div class="amount-row"><span>인건비 집행액 (수정 기준)</span><strong id="rowExecutedLabor">0원</strong></div>
+            <div class="amount-row"><span>인건비 집행 기준 한도</span><strong id="rowLaborCap">0원</strong></div>
+            <div class="amount-row"><span>집행 가능 한도</span><strong id="rowExecutionLimit">0원</strong></div>
+            <div class="amount-row"><span>연구수당 집행액</span><strong id="rowExecutedAllowance">0원</strong></div>
+            <div class="amount-row"><span>집행 잔여/초과 금액</span><strong id="rowExecutionBalance">0원</strong></div>
+            <div class="amount-row"><span>예상 불인정액</span><strong id="rowDisallowed">0원</strong></div>
+            <div class="amount-section">1인 지급률 점검</div>
+            <div class="amount-row"><span>적용 기준</span><strong id="rowParticipantRule">1인 100%</strong></div>
+            <div class="amount-row"><span>1인 최대 지급률</span><strong id="rowIndividualRate">0%</strong></div>
+            <div class="amount-row"><span>1인 최대 지급 한도</span><strong id="rowIndividualLimit">0원</strong></div>
+            <div class="amount-row"><span>1인 지급 잔여/초과 금액</span><strong id="rowIndividualBalance">0원</strong></div>
+          </div>
+
+          <div class="meter">
+            <div class="meter-head"><span>한도 대비 편성률</span><strong id="usageRate">0%</strong></div>
+            <div class="meter-track"><div id="usageBar" class="meter-fill"></div></div>
+          </div>
+
+          <div class="memo">
+            <h3>점검 메모</h3>
+            <p id="memoText">수정인건비를 입력하면 연구수당 한도가 계산됩니다.</p>
+          </div>
+        </div>
+
+        <div class="source-card">
+          <h2 data-en="Applied standards">적용 기준</h2>
+          <dl>
+            <div><dt>수정인건비</dt><dd>총인건비, 학생인건비, 미지급인건비를 합산한 금액으로 계산합니다.</dd></div>
+            <div><dt>연구수당</dt><dd>연구수당은 수정인건비의 20% 범위에서 계상하며, 전체 연구개발기간(단계로 구분되는 경우 해당 단계)을 기준으로 판단합니다.</dd></div>
+            <div><dt>집행 사전점검</dt><dd>연구수당지급비율(집행액÷총액)이 직접비사용비율(연구수당 제외)을 20%p 초과하면 초과분이 불인정됩니다. 불인정액 = 지급액 × (지급비율 − 사용비율 − 20%p). 사용비율이 80% 이상이면 전액 지급 가능합니다.</dd></div>
+            <div><dt>1인 지급률</dt><dd>참여연구원이 1명인 경우 100%, 2명인 경우 70%, 3명 이상인 경우 KASI 내부 기준 50%를 적용해 점검합니다.</dd></div>
+          </dl>
+          <nav aria-label="법령 원문">
+            <a href="https://www.law.go.kr/행정규칙/국가연구개발사업연구개발비사용기준" target="_blank" rel="noreferrer">연구개발비 사용 기준</a>
+            <a href="https://www.law.go.kr/법령/국가연구개발혁신법" target="_blank" rel="noreferrer">국가연구개발혁신법</a>
+          </nav>
+          <p>협약, 발주처 지침, 기관 내부 기준에서 별도 제한을 두는 경우에는 해당 기준도 함께 확인해야 합니다.</p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════
+       ★ 다국어 (KOR/ENG) — 용어는 국가연구개발혁신법 영문판 기준
+       ═══════════════════════════════════════════════════════════ */
+    const STATIC_MAP = [
+      ["연구수당 한도 계산기", "Research Allowance Limit Calculator"],
+      ["단계 연차 수를 선택하고 연차별 금액을 입력하면 단계 합산이 자동으로 계산됩니다. 혁신법 사용기준(연구수당지급비율 ≤ 직접비사용비율 + 20%p)에 따라 계상한도와 집행 가능 여부를 사전점검할 수 있습니다.",
+       "Choose the number of years in the stage and enter yearly amounts — stage totals are summed automatically. Pre-check the appropriation cap and payments under the Innovation Act rule: payment rate ≤ usage ratio + 20%p."],
+      ["연구수당 최대 계상한도", "Max allowance appropriation cap"],
+      ["한도 대비 편성률", "Appropriation vs. limit"],
+      ["연구수당 지급 가능률", "Allowance payable rate"],
+      ["연구수당 지급비율", "Allowance payment rate"],
+      ["1인 최대 지급률", "Max individual rate"],
+      ["원", "KRW"], ["천원", "K KRW"], ["만원", "10K KRW"], ["백만원", "1M KRW"],
+      ["예시 입력", "Load example"], ["초기화", "Reset"], ["편성 도우미", "Budget Helper"],
+      ["총인건비", "Total labor expenses"],
+      ["학생인건비", "Student labor expenses"],
+      ["미지급인건비", "Unpaid labor expenses"],
+      ["과제 기본정보", "Project basics"],
+      ["해당 단계의 연차 수와 공통 기준을 선택하세요", "choose the number of years and common rules for the stage"],
+      ["해당 단계 연차 수", "Years in this stage"],
+      ["단계 기준으로 연차 설정", "set the number of years for the stage"],
+      ["연차별 편성 입력", "Yearly appropriation inputs"],
+      ["연구수당 계상한도와 지급비율·사용비율 계산의 기준 금액", "basis for the allowance cap and the payment/usage ratios"],
+      ["내부인건비", "Internal labor expenses"],
+      ["외부인건비", "External labor expenses"],
+      ["직접비 총액은 연구수당 포함 금액으로 입력하세요 (자동 제외 계산). 각 연차의 금액을 입력하면 단계 합산은 자동입니다.",
+       "Enter total direct costs including the allowance (auto-excluded). Enter each year's amounts — stage totals are automatic."],
+      ["직접비 사용비율 및 연구수당 지급비율 점검", "Usage-ratio & payment-rate check"],
+      ["직접비 집행액은 연구수당 집행 포함 금액으로 입력하세요 (자동 제외 계산). 인건비 집행액은 수정인건비 기준(내부+외부+학생+미지급 집행 합계)입니다.",
+       "Enter executed direct costs including allowance payments (auto-excluded). Executed labor = adjusted-labor basis (internal + external + student + unpaid, executed)."],
+      ["인건비 집행액", "Executed labor"],
+      ["인건비 집행액 (수정 기준)", "Executed labor (adjusted basis)"],
+      ["인건비 집행 기준 한도", "Limit by executed labor"],
+      ["연차", "Year"],
+      ["합계 (단계)", "Stage total"],
+      ["금액 단위:", "Unit:"],
+      ["연구수당 한도", "Allowance limit"],
+      ["수정인건비의 20%까지 편성 가능", "up to 20% of adjusted labor expenses"],
+      ["연구수당 편성액", "Research allowance appropriated"],
+      ["집행 사전점검", "Execution pre-check"],
+      ["단계 통합 기준 · 연구수당지급비율 ≤ 직접비사용비율(연구수당 제외) + 20%p",
+       "stage basis · payment rate ≤ usage ratio (excl. allowance) + 20%p"],
+      ["직접비 총액", "Total direct costs"],
+      ["직접비 집행액", "Direct costs executed"],
+      ["연구수당 집행액", "Research allowance paid"],
+      ["1인 지급률 점검", "Individual payment-rate check"],
+      ["참여연구원 수에 따른 개인별 최대 지급률", "max individual rate by number of researchers"],
+      ["단계 기간 내 참여연구원 수", "Researchers during the stage"],
+      ["단계 기간 중 하루 이상 참여한 모든 연구원 수", "all researchers who joined for one day or more during the stage"],
+      ["1인 최대 지급 예정액", "Max planned payment per person"],
+      ["가장 많이 받는 참여연구원 기준", "based on the highest-paid researcher"],
+      ["계산 결과", "Result"],
+      ["결과 복사", "Copy result"],
+      ["편성 한도", "Appropriation limit"],
+      ["수정인건비", "Adjusted labor expenses"],
+      ["잔여/초과 금액", "Remaining / excess"],
+      ["직접비 사용비율 (연구수당 제외)", "Direct-cost usage ratio (excl. allowance)"],
+      ["지급 가능률 (사용비율 +20%p)", "Payable rate (usage +20%p)"],
+      ["집행 가능 한도", "Executable limit"],
+      ["집행 잔여/초과 금액", "Execution remaining / excess"],
+      ["예상 불인정액", "Estimated disallowed amount"],
+      ["적용 기준", "Applied rule"],
+      ["1인 최대 지급 한도", "Max individual limit"],
+      ["1인 지급 잔여/초과 금액", "Individual remaining / excess"],
+      ["연구수당 집행한도 (인건비 집행 대비)", "Allowance cap vs. executed labor"],
+      ["점검 메모", "Check notes"],
+      ["연구수당", "Research allowance"],
+      ["총인건비, 학생인건비, 미지급인건비를 합산한 금액으로 계산합니다.",
+       "Calculated as the sum of total, student, and unpaid labor expenses."],
+      ["연구수당은 수정인건비의 20% 범위에서 계상하며, 전체 연구개발기간(단계로 구분되는 경우 해당 단계)을 기준으로 판단합니다.",
+       "The research allowance is appropriated within 20% of adjusted labor expenses, judged over the whole R&D period (or the relevant stage if divided into stages)."],
+      ["연구수당지급비율(집행액÷총액)이 직접비사용비율(연구수당 제외)을 20%p 초과하면 초과분이 불인정됩니다. 불인정액 = 지급액 × (지급비율 − 사용비율 − 20%p). 사용비율이 80% 이상이면 전액 지급 가능합니다.",
+       "If the payment rate (paid ÷ total) exceeds the usage ratio (excl. allowance) by more than 20%p, the excess is disallowed. Disallowed = paid × (payment rate − usage ratio − 20%p). A usage ratio of 80%+ allows full payment."],
+      ["1인 지급률", "Individual payment rate"],
+      ["참여연구원이 1명인 경우 100%, 2명인 경우 70%, 3명 이상인 경우 KASI 내부 기준 50%를 적용해 점검합니다.",
+       "Checks apply 100% for 1 researcher, 70% for 2 (Innovation Act), and 50% for 3 or more (KASI internal standard)."],
+      ["연구개발비 사용 기준", "R&D Expenses Use Standards"],
+      ["국가연구개발혁신법", "National R&D Innovation Act"],
+      ["협약, 발주처 지침, 기관 내부 기준에서 별도 제한을 두는 경우에는 해당 기준도 함께 확인해야 합니다.",
+       "If the agreement, funder guidelines, or internal institutional rules impose additional limits, those must be checked as well."],
+    ];
+
+    const I18N = {
+      ko: {
+        wait: "대기", inputWait: "입력 대기",
+        planPass: "편성 통과", planOver: "편성 초과", planOk: "편성 가능", planCapOver: "편성 한도 초과",
+        planWithin: (r) => `편성 한도 ${r} 이내`, planWithinCopy: "편성 한도 이내",
+        execPass: "집행 통과", execOver: "집행 초과", execOk: "집행 가능",
+        execCheckPass: "집행 점검 통과", payOver: "지급비율 초과", capOver: "집행한도 초과 (인건비 기준)", indivRateOver: "1인 지급률 초과",
+        needDirect: "직접비 입력", needDirectFull: "직접비 입력 필요",
+        needAllowance: "편성액 입력", needAllowanceFull: "연구수당 편성액 입력 필요",
+        needExecLabor: "인건비 집행 입력", needExecLaborFull: "인건비 집행액 입력 필요",
+        fullPayable: "100% 지급 가능", direct: (r) => `직접비 ${r}`, indivOver: "1인 초과",
+        left: (w) => `${w} 남음`, over: (w) => `${w} 초과`,
+        heroCapLabel: "연구수당 최대 계상한도", heroExecLabel: "연구수당 집행 가능 한도",
+        rule1: "1인 100%", rule2: "2인 70% (혁신법)", rule3: "3인 이상 50% (KASI 내부 기준)",
+        yearLabel: (y) => `${y}차년도`,
+        gCapCaption: "집행한도(인건비 집행 × 한도율)", gUsageCaption: "연구수당 제외 기준", gPayableCaption: "지급 가능선(사용비율 +20%p)", gIndivCaption: "적용 기준",
+        memoStart: "총인건비, 학생인건비, 미지급인건비를 단계 합산으로 입력하면 연구수당 계상한도와 집행 사전점검 기준이 계산됩니다.",
+        memoCap: (w) => `현재 수정인건비 기준 연구수당은 최대 ${w}까지 계상할 수 있습니다 (단계 기준).`,
+        memoPlanOk: (w) => `편성액은 한도 이내입니다. 추가로 ${w}까지 편성 가능합니다.`,
+        memoPlanOver: (w) => `편성액이 한도를 ${w} 초과합니다.`,
+        memoNeedDirect: "직접비 총액과 직접비 집행액(단계 누적)을 입력하면 직접비사용비율과 지급 가능률(+20%p)이 계산됩니다.",
+        memoNeedAllowance: "연구수당 편성액(단계 협약 총액)을 입력하면 연구수당지급비율을 계산할 수 있습니다.",
+        memoCapOver: (w, c) => `연구수당 집행액이 인건비 집행 기준 한도(인건비 집행액 × 한도율 = ${c})를 ${w} 초과합니다.`,
+        memoNeedExecLabor: "인건비 집행액(수정인건비 기준)을 입력하면 집행 시점의 연구수당 한도를 확인할 수 있습니다.",
+        memoExecOver: (p, y, d) => `연구수당지급비율 ${p}이 지급 가능률 ${y}(사용비율 +20%p)를 초과합니다. 예상 불인정액은 ${d}입니다.`,
+        memoIndivOver: (label, w) => `1인 최대 지급 예정액이 ${label} 기준을 ${w} 초과합니다.`,
+        memoExecOk: (p, y) => `연구수당지급비율 ${p}은 지급 가능률 ${y} 이내입니다. 단계 기준 집행 가능합니다.`,
+        copyTitle: "KASI 연구수당 한도 계산기 (단계 기준)",
+        cInternal: "내부인건비", cExternal: "외부인건비", cStudent: "학생인건비", cUnpaid: "미지급인건비", cModified: "수정인건비",
+        cRate: "연구수당 한도율", cCap: "연구수당 최대 계상한도", cAllowance: "연구수당 편성액",
+        cDirectRate: "직접비사용비율(연구수당 제외)", cPayable: "지급 가능률(+20%p)", cPayment: "연구수당지급비율",
+        cExecLimit: "집행 가능 한도", cExecuted: "연구수당 집행액", cExecLabor: "인건비 집행액(수정 기준)", cLaborCap: "인건비 집행 기준 한도", cDisallowed: "예상 불인정액",
+        cIndiv: "1인 최대 지급률", cBasis: "기준", cResult: "점검 결과",
+        copied: "복사됨", copyFail: "복사 실패", copyBtn: "결과 복사",
+      },
+      en: {
+        wait: "Waiting", inputWait: "Awaiting input",
+        planPass: "Plan OK", planOver: "Plan over", planOk: "OK to appropriate", planCapOver: "Over appropriation cap",
+        planWithin: (r) => `Within ${r} cap`, planWithinCopy: "Within appropriation cap",
+        execPass: "Exec. OK", execOver: "Exec. over", execOk: "OK to execute",
+        execCheckPass: "Execution check passed", payOver: "Payment rate over", capOver: "Over labor-based cap", indivRateOver: "Over individual rate",
+        needDirect: "Enter direct costs", needDirectFull: "Direct costs required",
+        needAllowance: "Enter allowance", needAllowanceFull: "Allowance total required",
+        needExecLabor: "Enter executed labor", needExecLaborFull: "Executed labor required",
+        fullPayable: "100% payable", direct: (r) => `Usage ${r}`, indivOver: "Individual over",
+        left: (w) => `${w} left`, over: (w) => `${w} over`,
+        heroCapLabel: "Max allowance appropriation cap", heroExecLabel: "Executable allowance limit",
+        rule1: "1 person 100%", rule2: "2 persons 70% (Innovation Act)", rule3: "3+ persons 50% (KASI internal)",
+        yearLabel: (y) => `Year ${y}`,
+        gCapCaption: "Cap (executed labor × rate)", gUsageCaption: "Excl.-allowance basis", gPayableCaption: "Payable line (usage +20%p)", gIndivCaption: "Applied rule",
+        memoStart: "Enter total, student, and unpaid labor expenses (stage totals) to calculate the appropriation cap and execution pre-check basis.",
+        memoCap: (w) => `Based on the current adjusted labor expenses, the research allowance can be appropriated up to ${w} (stage basis).`,
+        memoPlanOk: (w) => `Appropriated amount is within the cap. Up to ${w} more can be appropriated.`,
+        memoPlanOver: (w) => `Appropriated amount exceeds the cap by ${w}.`,
+        memoNeedDirect: "Enter total and executed direct costs (stage cumulative) to calculate the usage ratio and payable rate (+20%p).",
+        memoNeedAllowance: "Enter the appropriated research allowance (stage agreement total) to calculate the payment rate.",
+        memoCapOver: (w, c) => `Research allowance paid exceeds the executed-labor cap (executed labor × rate = ${c}) by ${w}.`,
+        memoNeedExecLabor: "Enter executed labor (adjusted basis) to check the allowance cap at execution time.",
+        memoExecOver: (p, y, d) => `The payment rate ${p} exceeds the payable rate ${y} (usage +20%p). Estimated disallowed amount: ${d}.`,
+        memoIndivOver: (label, w) => `Max planned payment per person exceeds the ${label} rule by ${w}.`,
+        memoExecOk: (p, y) => `The payment rate ${p} is within the payable rate ${y}. Execution is allowed on a stage basis.`,
+        copyTitle: "KASI Research Allowance Limit Calculator (stage basis)",
+        cInternal: "Internal labor expenses", cExternal: "External labor expenses", cStudent: "Student labor expenses", cUnpaid: "Unpaid labor expenses", cModified: "Adjusted labor expenses",
+        cRate: "Allowance limit rate", cCap: "Max allowance appropriation cap", cAllowance: "Research allowance appropriated",
+        cDirectRate: "Direct-cost usage ratio (excl. allowance)", cPayable: "Payable rate (+20%p)", cPayment: "Allowance payment rate",
+        cExecLimit: "Executable limit", cExecuted: "Research allowance paid", cExecLabor: "Executed labor (adjusted)", cLaborCap: "Limit by executed labor", cDisallowed: "Estimated disallowed amount",
+        cIndiv: "Max individual rate", cBasis: "rule", cResult: "Result",
+        copied: "Copied", copyFail: "Copy failed", copyBtn: "Copy result",
+      },
+    };
+    window.uiLang = "ko";
+    const L = (k) => I18N[window.uiLang][k];
+
+    function swapStatic(lang) {
+      const from = lang === "en" ? 0 : 1, to = lang === "en" ? 1 : 0;
+      const map = new Map(STATIC_MAP.map((p) => [p[from], p[to]]));
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach((n) => {
+        if (n.parentElement && n.parentElement.dataset && n.parentElement.dataset.en !== undefined) return; // 개별 지정 요소 제외
+        const t = n.nodeValue.trim();
+        if (t && map.has(t)) n.nodeValue = n.nodeValue.replace(t, map.get(t));
+      });
+      document.querySelectorAll("[data-en]").forEach((node) => {
+        node.textContent = lang === "en" ? node.dataset.en : node.dataset.ko;
+      });
+    }
+
+    function applyLang(lang) {
+      const prev = window.uiLang;
+      window.uiLang = lang;
+      try { localStorage.setItem("kasilog-lang", lang); } catch (e) { /* 무시 */ }
+      if (prev !== lang) swapStatic(lang);
+      document.documentElement.lang = lang === "en" ? "en" : "ko";
+      document.querySelectorAll(".lang-btn").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
+      document.querySelector("[data-year-field]").dataset.suffix = lang === "en" ? "yr" : "차년도";
+      document.querySelector("[data-count-field]").dataset.suffix = lang === "en" ? "ppl" : "명";
+      renderYearRows();   // 연차 라벨 언어 갱신 (입력값 유지)
+      updateUnitLabels();
+      calculate();
+    }
+
+    /* ─────────────────────────────────────────────
+       계산기 본체 — 혁신법 단계 기준
+       (연구개발비 사용 기준 제26조: 지급비율 ≤ 사용비율 + 20%p)
+       ───────────────────────────────────────────── */
+    const units = { won: 1, thousand: 1000, man: 10000, million: 1000000 };
+    let unit = "thousand";
+    const PLAN_COLS = ["internalLabor", "externalLabor", "studentLabor", "unpaidLabor", "allowanceAmount", "directBudget"];
+    const EXEC_COLS = ["executedLabor", "directSpent", "executedAllowance"];
+    const COLS = [...PLAN_COLS, ...EXEC_COLS];
+    const moneyIds = ["maxIndividualAllowance"];
+    const numberIds = ["allowanceRate", "participantCount"];
+    function el(id) { return document.getElementById(id); }
+    function numeric(raw) {
+      const value = Number(String(raw).replace(/,/g, "").replace(/[^\d.-]/g, ""));
+      return Number.isFinite(value) ? Math.max(0, value) : 0;
+    }
+    function nf() { return new Intl.NumberFormat(window.uiLang === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 0 }); }
+    function pf() { return new Intl.NumberFormat(window.uiLang === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 }); }
+    function amount(id) { return numeric(el(id).value) * units[unit]; }
+    function colRawSum(col) {
+      let total = 0;
+      document.querySelectorAll(`.ycell[data-col="${col}"]`).forEach((input) => { total += numeric(input.value); });
+      return total;
+    }
+    function colAmount(col) { return colRawSum(col) * units[unit]; }
+    function renderYearRows() {
+      const count = Math.min(10, Math.max(1, Math.floor(numeric(el("yearCount").value) || 1)));
+      const saved = {};
+      document.querySelectorAll("input.ycell").forEach((input) => { saved[`${input.dataset.col}_${input.dataset.year}`] = input.value; });
+      [["yearRows", PLAN_COLS], ["execRows", EXEC_COLS]].forEach(([tbodyId, cols]) => {
+        let html = "";
+        for (let y = 1; y <= count; y++) {
+          html += `<tr><th>${L("yearLabel")(y)}</th>` + cols.map((c) =>
+            `<td><input class="ycell" data-col="${c}" data-year="${y}" inputmode="decimal" placeholder="0" value="${saved[`${c}_${y}`] || ""}" /></td>`
+          ).join("") + `</tr>`;
+        }
+        el(tbodyId).innerHTML = html;
+      });
+    }
+    function rate(id) { return numeric(el(id).value) / 100; }
+    function won(value) {
+      const n = nf().format(Math.round(value));
+      return window.uiLang === "en" ? `KRW ${n}` : `${n}원`;
+    }
+    function rateText(value) { return `${pf().format(value * 100)}%`; }
+    function formatMoneyValue(raw) {
+      const digits = String(raw).replace(/[^\d]/g, "");
+      return digits ? nf().format(Number(digits)) : "";
+    }
+    function formatMoneyInput(id) {
+      const input = el(id);
+      input.value = formatMoneyValue(input.value);
+    }
+    function unitLabel() {
+      return document.querySelector(`[data-unit="${unit}"]`)?.textContent || (window.uiLang === "en" ? "K KRW" : "천원");
+    }
+    function updateUnitLabels() {
+      document.querySelectorAll("[data-money-field]").forEach((field) => {
+        field.setAttribute("data-unit-label", unitLabel());
+      });
+      el("tableUnitHint").textContent = unitLabel();
+    }
+    function setStatus(id, text, tone) {
+      const item = el(id);
+      item.textContent = text;
+      item.className = `status ${tone}`;
+    }
+    function setMeter(usage, barId, rateId, compliant) {
+      const clamped = Math.min(1, Math.max(0, usage));
+      el(barId).style.width = `${clamped * 100}%`;
+      el(barId).classList.toggle("danger", !compliant);
+      el(rateId).textContent = rateText(usage);
+    }
+    function setSummaryMeter(usage, barId, rateId, statusId, statusText, tone) {
+      const clamped = Math.min(1, Math.max(0, usage));
+      el(barId).style.width = `${clamped * 100}%`;
+      el(barId).classList.toggle("danger", tone === "danger");
+      el(rateId).textContent = rateText(usage);
+      setStatus(statusId, statusText, tone);
+    }
+    function participantRule(count) {
+      if (count <= 1) return { rate: 1, label: L("rule1") };
+      if (count === 2) return { rate: .7, label: L("rule2") };
+      return { rate: .5, label: L("rule3") };
+    }
+    const EPS = 1e-9;
+
+    function calculate() {
+      // ① 편성 한도 (수정인건비 × 한도율, 단계 기준)
+      const internal = colAmount("internalLabor");
+      const external = colAmount("externalLabor");
+      const labor = internal + external;
+      const student = colAmount("studentLabor");
+      const unpaid = colAmount("unpaidLabor");
+      const allowanceRate = rate("allowanceRate");
+      const modifiedLabor = labor + student + unpaid;
+      const cap = modifiedLabor * allowanceRate;
+
+      const allowance = colAmount("allowanceAmount");         // 단계 협약 연구수당 총액 (연차 합산)
+      const hasAllowance = colRawSum("allowanceAmount") > 0;
+      const balance = cap - allowance;
+      const planningUsage = cap > 0 ? allowance / cap : 0;
+      const planningCompliant = !hasAllowance || allowance <= cap + EPS;
+
+      // ② 집행 사전점검 (혁신법: 지급비율 ≤ 사용비율(연구수당 제외) + 20%p)
+      const directBudget = colAmount("directBudget");
+      const directSpent = colAmount("directSpent");
+      const executedAllowance = colAmount("executedAllowance");
+      const hasExecutionInput = directBudget > 0 || directSpent > 0 || colRawSum("executedAllowance") > 0;
+
+      const needAllowance = hasExecutionInput && !hasAllowance;      // 지급비율 분모 없음
+      const directBaseExcl = directBudget - allowance;               // 직접비 총액(연구수당 제외)
+      const spentExcl = Math.max(0, directSpent - executedAllowance); // 집행액(연구수당 제외)
+      const usageReady = directBudget > 0 && hasAllowance && directBaseExcl > 0;
+
+      const directUsageRate = usageReady ? spentExcl / directBaseExcl : 0;
+      const payableRate = usageReady ? Math.min(1, directUsageRate + .2) : 0;
+      const paymentRate = hasAllowance ? executedAllowance / allowance : 0;
+      const executedLabor = colAmount("executedLabor");
+      const laborEntered = colRawSum("executedLabor") > 0;
+      const laborCap = executedLabor * allowanceRate;
+      const needExecLabor = executedAllowance > 0 && !laborEntered;
+      const payableLimit = usageReady ? allowance * payableRate : 0;
+      const executionLimit = usageReady
+        ? (laborEntered ? Math.min(payableLimit, laborCap) : payableLimit)
+        : 0;
+      const executionBalance = executionLimit - executedAllowance;
+      const paymentOk = paymentRate <= payableRate + EPS;
+      const disallowed = usageReady && !paymentOk
+        ? executedAllowance * (paymentRate - directUsageRate - .2)
+        : 0;
+
+      // 집행한도(집행 시점): 연구수당 집행액 ≤ 인건비 집행액(수정 기준) × 한도율
+      const capUsage = laborCap > 0 ? executedAllowance / laborCap : 0;
+      const capCompliant = executedAllowance === 0 || (laborEntered && executedAllowance <= laborCap + EPS);
+
+      const executionCompliant = !hasExecutionInput
+        || (usageReady && paymentOk && capCompliant);
+
+      // ③ 1인 지급률
+      const participantCount = Math.floor(numeric(el("participantCount").value));
+      const maxIndividualAllowance = amount("maxIndividualAllowance");
+      const rule = participantRule(participantCount);
+      const individualLimit = executedAllowance * rule.rate;
+      const individualRate = executedAllowance > 0 ? maxIndividualAllowance / executedAllowance : 0;
+      const individualBalance = individualLimit - maxIndividualAllowance;
+      const hasIndividualInput = colRawSum("executedAllowance") > 0 || numeric(el("maxIndividualAllowance").value) > 0;
+      const individualCompliant = !hasIndividualInput || maxIndividualAllowance <= individualLimit + EPS;
+
+      const overallCompliant = planningCompliant && executionCompliant && individualCompliant;
+      const hasAnyExecutionCheck = hasExecutionInput || hasIndividualInput;
+
+      // ── 히어로 ──
+      el("heroLabel").textContent = hasAnyExecutionCheck ? L("heroExecLabel") : L("heroCapLabel");
+      el("heroCap").textContent = won(hasAnyExecutionCheck ? executionLimit : cap);
+      const execProblem = !executionCompliant
+        ? (needAllowance ? L("needAllowanceFull")
+          : !usageReady ? L("needDirectFull")
+          : needExecLabor ? L("needExecLaborFull")
+          : !capCompliant ? L("capOver") : L("payOver"))
+        : L("indivRateOver");
+      setStatus(
+        "heroStatus",
+        hasAnyExecutionCheck
+          ? overallCompliant ? L("execCheckPass") : execProblem
+          : modifiedLabor === 0 ? L("wait") : planningCompliant ? L("planWithin")(rateText(allowanceRate)) : L("planCapOver"),
+        hasAnyExecutionCheck ? overallCompliant ? "ok" : "danger" : modifiedLabor === 0 ? "neutral" : planningCompliant ? "ok" : "danger"
+      );
+      el("resultTitle").textContent = hasAnyExecutionCheck
+        ? overallCompliant ? L("execOk") : execProblem
+        : modifiedLabor === 0 ? L("inputWait") : planningCompliant ? L("planOk") : L("planCapOver");
+
+      // ── 합계(단계) 행 ──
+      COLS.forEach((c) => {
+        const raw = Math.round(colRawSum(c));
+        el(`sum_${c}`).textContent = raw ? nf().format(raw) : "0";
+      });
+
+      // ── 결과 행 ──
+      el("rowInternal").textContent = won(internal);
+      el("rowExternal").textContent = won(external);
+      el("rowStudent").textContent = won(student);
+      el("rowUnpaid").textContent = won(unpaid);
+      el("rowModifiedLabor").textContent = won(modifiedLabor);
+      el("rowCap").textContent = won(cap);
+      el("rowAllowance").textContent = won(allowance);
+      el("rowBalance").textContent = balance >= 0 ? L("left")(won(balance)) : L("over")(won(Math.abs(balance)));
+      el("rowDirectUsageRate").textContent = usageReady ? rateText(directUsageRate) : (needAllowance ? L("needAllowance") : L("needDirect"));
+      el("rowPayableRate").textContent = usageReady ? rateText(payableRate) : "–";
+      el("rowPaymentRate").textContent = hasAllowance ? rateText(paymentRate) : L("needAllowance");
+      el("rowExecutedLabor").textContent = laborEntered ? won(executedLabor) : L("needExecLabor");
+      el("rowLaborCap").textContent = laborEntered ? won(laborCap) : "–";
+      el("rowExecutionLimit").textContent = usageReady ? won(executionLimit) : "–";
+      el("rowExecutedAllowance").textContent = won(executedAllowance);
+      el("rowExecutionBalance").textContent = usageReady
+        ? executionBalance >= 0 ? L("left")(won(executionBalance)) : L("over")(won(Math.abs(executionBalance)))
+        : "–";
+      el("rowDisallowed").textContent = won(disallowed);
+      el("rowDisallowed").style.color = disallowed > 0 ? "#e30113" : "";
+      el("rowParticipantRule").textContent = rule.label;
+      el("rowIndividualRate").textContent = rateText(individualRate);
+      el("rowIndividualLimit").textContent = won(individualLimit);
+      el("rowIndividualBalance").textContent = individualBalance >= 0 ? L("left")(won(individualBalance)) : L("over")(won(Math.abs(individualBalance)));
+
+      // ── 미터 (요청 3종 포함 5종) ──
+      setMeter(planningUsage, "usageBar", "usageRate", planningCompliant);
+      // 사용비율·지급비율·집행한도·1인 지급률 그래프는 03·04 밴드에 표시 (우측 중복 제거)
+
+      // ── 밴드 03 대형 그래프 3종 ──
+      const setGraph = (barId, rateId, value, compliant) => {
+        el(barId).style.width = `${Math.min(1, Math.max(0, value)) * 100}%`;
+        el(barId).classList.toggle("danger", !compliant);
+        el(rateId).textContent = rateText(value);
+        el(rateId).classList.toggle("danger", !compliant);
+      };
+      setGraph("gCapBar", "gCapRate", laborEntered ? capUsage : 0, capCompliant);
+      el("gCapCaption").textContent = `${L("gCapCaption")}: ${laborEntered ? won(laborCap) : "–"}`;
+      setGraph("gUsageBar", "gUsageRate", usageReady ? directUsageRate : 0, true);
+      el("gUsageCaption").textContent = `${L("gUsageCaption")}: ${usageReady ? `${won(spentExcl)} ÷ ${won(directBaseExcl)}` : "–"}`;
+      setGraph("gPaymentBar", "gPaymentRate", hasAllowance ? paymentRate : 0, !usageReady || paymentOk);
+      el("gPayableMark").style.left = `${Math.min(1, payableRate) * 100}%`;
+      el("gPayableMark").style.display = usageReady ? "" : "none";
+      el("gPayableCaption").textContent = `${L("gPayableCaption")}: ${usageReady ? rateText(payableRate) : "–"}`;
+
+      // ── 밴드 04 1인 지급률 그래프 ──
+      setGraph("gIndivBar", "gIndivRate", individualRate, individualCompliant);
+      el("gIndivMark").style.left = `${Math.min(1, rule.rate) * 100}%`;
+      el("gIndivCaption").textContent = `${L("gIndivCaption")}: ${rule.label}`;
+
+      // ── 히어로 요약 미터 ──
+      setSummaryMeter(
+        planningUsage, "heroPlanningBar", "heroPlanningUsage", "heroPlanningStatus",
+        modifiedLabor === 0 ? L("wait") : planningCompliant ? L("planPass") : L("planOver"),
+        modifiedLabor === 0 ? "neutral" : planningCompliant ? "ok" : "danger"
+      );
+      setSummaryMeter(
+        payableRate, "heroPayableBar", "heroPayableRate", "heroPayableStatus",
+        !hasExecutionInput ? L("wait") : needAllowance ? L("needAllowance") : !usageReady ? L("needDirect")
+          : directUsageRate >= .8 ? L("fullPayable") : L("direct")(rateText(directUsageRate)),
+        !hasExecutionInput || !usageReady ? "neutral" : directUsageRate >= .8 ? "ok" : "warn"
+      );
+      setSummaryMeter(
+        paymentRate, "heroExecutionBar", "heroExecutionUsage", "heroExecutionStatus",
+        !hasExecutionInput ? L("wait") : needAllowance ? L("needAllowance") : !usageReady ? L("needDirect")
+          : paymentOk && capCompliant ? L("execPass") : L("execOver"),
+        !hasExecutionInput || !usageReady ? "neutral" : paymentOk && capCompliant ? "ok" : "danger"
+      );
+      setSummaryMeter(
+        individualRate, "heroIndividualBar", "heroIndividualRate", "heroIndividualStatus",
+        !hasIndividualInput ? L("wait") : individualCompliant ? rule.label : L("indivOver"),
+        !hasIndividualInput ? "neutral" : individualCompliant ? "ok" : "danger"
+      );
+
+      // ── 점검 메모 ──
+      const memo = hasAnyExecutionCheck
+        ? needAllowance
+          ? L("memoNeedAllowance")
+          : !usageReady
+            ? L("memoNeedDirect")
+            : needExecLabor
+              ? L("memoNeedExecLabor")
+              : !capCompliant
+              ? L("memoCapOver")(won(executedAllowance - laborCap), won(laborCap))
+              : !paymentOk
+                ? L("memoExecOver")(rateText(paymentRate), rateText(payableRate), won(disallowed))
+                : !individualCompliant
+                  ? L("memoIndivOver")(rule.label, won(Math.abs(individualBalance)))
+                  : L("memoExecOk")(rateText(paymentRate), rateText(payableRate))
+        : modifiedLabor === 0
+          ? L("memoStart")
+          : !hasAllowance
+            ? L("memoCap")(won(cap))
+            : planningCompliant
+              ? L("memoPlanOk")(won(balance))
+              : L("memoPlanOver")(won(Math.abs(balance)));
+      el("memoText").textContent = memo;
+
+      // ── 복사 요약 ──
+      window.latestSummary = [
+        L("copyTitle"),
+        `${L("cInternal")}: ${won(internal)}`,
+        `${L("cExternal")}: ${won(external)}`,
+        `${L("cStudent")}: ${won(student)}`,
+        `${L("cUnpaid")}: ${won(unpaid)}`,
+        `${L("cModified")}: ${won(modifiedLabor)}`,
+        `${L("cRate")}: ${rateText(allowanceRate)}`,
+        `${L("cCap")}: ${won(cap)}`,
+        `${L("cAllowance")}: ${won(allowance)}`,
+        `${L("cDirectRate")}: ${usageReady ? rateText(directUsageRate) : "–"}`,
+        `${L("cPayable")}: ${usageReady ? rateText(payableRate) : "–"}`,
+        `${L("cPayment")}: ${hasAllowance ? rateText(paymentRate) : "–"}`,
+        `${L("cExecLimit")}: ${usageReady ? won(executionLimit) : "–"}`,
+        `${L("cExecuted")}: ${won(executedAllowance)}`,
+        `${L("cExecLabor")}: ${laborEntered ? won(executedLabor) : "–"}`,
+        `${L("cLaborCap")}: ${laborEntered ? won(laborCap) : "–"}`,
+        `${L("cDisallowed")}: ${won(disallowed)}`,
+        `${L("cIndiv")}: ${rateText(individualRate)} / ${L("cBasis")} ${rule.label}`,
+        `${L("cResult")}: ${hasAnyExecutionCheck ? overallCompliant ? L("execOk") : execProblem : modifiedLabor === 0 ? L("inputWait") : planningCompliant ? L("planWithinCopy") : L("planCapOver")}`
+      ].join("\n");
+    }
+
+    moneyIds.forEach((id) => {
+      el(id).addEventListener("input", () => {
+        formatMoneyInput(id);
+        calculate();
+      });
+    });
+    ["yearRows", "execRows"].forEach((tbodyId) => {
+      el(tbodyId).addEventListener("input", (event) => {
+        const input = event.target;
+        if (!input.classList.contains("ycell")) return;
+        input.value = formatMoneyValue(input.value);
+        calculate();
+      });
+    });
+    el("yearCount").addEventListener("change", () => {
+      renderYearRows();   // 기존 입력값은 유지됨
+      calculate();
+    });
+    numberIds.forEach((id) => el(id).addEventListener("input", calculate));
+    document.querySelectorAll("[data-unit]").forEach((button) => {
+      button.addEventListener("click", () => {
+        unit = button.dataset.unit;
+        document.querySelectorAll("[data-unit]").forEach((item) => item.classList.toggle("active", item === button));
+        updateUnitLabels();
+        calculate();
+      });
+    });
+    el("exampleButton").addEventListener("click", () => {
+      unit = "thousand";
+      document.querySelectorAll("[data-unit]").forEach((item) => item.classList.toggle("active", item.dataset.unit === "thousand"));
+      updateUnitLabels();
+      el("yearCount").value = "3";
+      renderYearRows();
+      const yearly = {   // 3개 연차 예시 (합계: 기존 예시와 동일)
+        internalLabor:     ["7000",  "7000",  "7000"],
+        externalLabor:     ["3000",  "3000",  "3000"],
+        studentLabor:      ["4000",  "4000",  "4000"],
+        unpaidLabor:       ["0",     "0",     "0"],
+        allowanceAmount:   ["3000",  "3000",  "2000"],
+        directBudget:      ["36000", "36000", "36000"],
+        executedLabor:     ["11000", "11000", "0"],
+        directSpent:       ["30000", "22000", "0"],
+        executedAllowance: ["2000",  "2000",  "0"],
+      };
+      Object.entries(yearly).forEach(([col, arr]) => {
+        arr.forEach((value, index) => {
+          const input = document.querySelector(`.ycell[data-col="${col}"][data-year="${index + 1}"]`);
+          if (input) input.value = formatMoneyValue(value);
+        });
+      });
+      el("maxIndividualAllowance").value = formatMoneyValue("2000");
+      el("allowanceRate").value = "20";
+      el("participantCount").value = "3";
+      calculate();
+    });
+    el("resetButton").addEventListener("click", () => {
+      moneyIds.forEach((id) => { el(id).value = ""; });
+      document.querySelectorAll("input.ycell").forEach((input) => { input.value = ""; });
+      el("allowanceRate").value = "20";
+      el("participantCount").value = "1";
+      updateUnitLabels();
+      calculate();
+    });
+    el("copyButton").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(window.latestSummary || "");
+        el("copyButton").textContent = L("copied");
+      } catch {
+        el("copyButton").textContent = L("copyFail");
+      }
+      setTimeout(() => { el("copyButton").textContent = L("copyBtn"); }, 1600);
+    });
+
+    // ── 언어 초기화 (KASILog·도우미와 저장 키 공유) ──
+    document.querySelectorAll("[data-en]").forEach((node) => {
+      if (!node.dataset.ko) node.dataset.ko = node.textContent.trim();
+    });
+    document.querySelectorAll(".lang-btn").forEach((b) =>
+      b.addEventListener("click", () => applyLang(b.dataset.lang)));
+    let savedLang = "ko";
+    try { savedLang = localStorage.getItem("kasilog-lang") || "ko"; } catch (e) { /* 무시 */ }
+    if (savedLang === "en") { swapStatic("en"); window.uiLang = "en"; }
+    document.querySelectorAll(".lang-btn").forEach((b) => b.classList.toggle("active", b.dataset.lang === (savedLang === "en" ? "en" : "ko")));
+    document.documentElement.lang = savedLang === "en" ? "en" : "ko";
+    renderYearRows();
+    updateUnitLabels();
+    calculate();
+  </script>
+</body>
+</html>
